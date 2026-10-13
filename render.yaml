@@ -10,3 +10,5 @@ services:
         value: production
       - key: PORT
         value: 10000
+      - key: MONGODB_URI
+        value: "mongodb+srv://lankacare_user:EnABcd343%23Damith321@cluster0.uuksd4z.mongodb.net/pharmacy?retryWrites=true&w=majority&appName=Cluster0"
