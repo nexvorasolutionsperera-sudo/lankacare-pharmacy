@@ -1,0 +1,13 @@
+{
+  "name": "lankacare-pharmacy",
+  "version": "1.0.0",
+  "description": "LankaCare Pharmacy Management System",
+  "scripts": {
+    "build": "cd client && npm install && npm run build",
+    "start": "cd server && node server.js",
+    "install-all": "cd server && npm install && cd ../client && npm install"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

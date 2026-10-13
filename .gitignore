@@ -1,0 +1,11 @@
+node_modules/
+server/node_modules/
+client/node_modules/
+server/pharmacy.db
+backups/
+*.env
+.env
+*.log
+
+# Keep dist for Render (optional - we'll build on Render)
+# client/dist/
