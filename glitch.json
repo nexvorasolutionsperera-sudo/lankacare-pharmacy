@@ -1,0 +1,7 @@
+{
+  "install": "cd client && npm install && npm run build && cd ../server && npm install",
+  "start": "node server/server.js",
+  "watch": {
+    "ignore": ["client/dist/**", "server/pharmacy.db"]
+  }
+}
