@@ -71,10 +71,6 @@ export default function LoginPage({ onLoginSuccess }) {
           <p className="text-xs text-slate-500 font-medium mt-1">
             ඔසුසල් කළමනාකරණ පද්ධතියට පිවිසෙන්න
           </p>
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-bold mt-2">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            Secure Authorized Access
-          </div>
         </div>
 
         {/* Error Alert */}

@@ -76,11 +76,7 @@ export default function Dashboard({ stats, setActiveTab, onOpenAddMed, onOpenGRN
             <div className="flex items-center gap-3">
               <Logo size="lg" showText={false} />
               <div>
-                <div className="inline-flex items-center gap-2 px-3 py-0.5 rounded-full bg-white/10 backdrop-blur-md text-emerald-200 text-xs font-semibold">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                  <span>Sri Lanka Registered Pharmacy • Live Counter</span>
-                </div>
-                <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white mt-1">
+                <h1 className="text-2xl md:text-3xl font-black tracking-tight text-white">
                   {t.welcomeTitle}
                 </h1>
               </div>
