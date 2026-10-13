@@ -60,9 +60,14 @@ export default function LoginPage({ onLoginSuccess }) {
         
         {/* Brand Header */}
         <div className="text-center mb-8">
-          <div className="flex justify-center mb-4">
-            <Logo size="lg" />
+          <div className="flex justify-center mb-3">
+            <img 
+              src="/pharmacy-logo.png" 
+              alt="LankaCare Pharmacy" 
+              className="h-20 w-auto object-contain drop-shadow-md"
+            />
           </div>
+          <h1 className="text-xl font-extrabold text-slate-800 tracking-tight">LankaCare</h1>
           <p className="text-xs text-slate-500 font-medium mt-1">
             ඔසුසල් කළමනාකරණ පද්ධතියට පිවිසෙන්න
           </p>
@@ -170,9 +175,17 @@ export default function LoginPage({ onLoginSuccess }) {
           </div>
         </div>
 
-        {/* Footer info */}
-        <div className="text-center mt-6 text-[11px] text-slate-400">
-          <span>LankaCare Pharmacy POS & ERP System v1.0</span>
+        {/* Footer — Created by Nexvora Solutions */}
+        <div className="text-center mt-6 pt-4 border-t border-slate-100">
+          <p className="text-[10px] text-slate-400 mb-2">LankaCare Pharmacy POS & ERP System v1.0</p>
+          <div className="flex items-center justify-center gap-2">
+            <span className="text-[10px] text-slate-400 font-medium">Software Created by</span>
+            <img 
+              src="/nexvora-logo.png" 
+              alt="Nexvora Solutions" 
+              className="h-6 w-auto object-contain opacity-80"
+            />
+          </div>
         </div>
 
       </div>

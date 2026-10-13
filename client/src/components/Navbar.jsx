@@ -76,10 +76,18 @@ export default function Navbar({
           
           {/* Brand Logo */}
           <div 
-            className="cursor-pointer py-1"
+            className="cursor-pointer py-1 flex items-center gap-2.5"
             onClick={() => setActiveTab('dashboard')}
           >
-            <Logo size="md" />
+            <img 
+              src="/pharmacy-logo.png" 
+              alt="LankaCare" 
+              className="h-9 w-auto object-contain"
+            />
+            <div className="hidden sm:block">
+              <div className="text-sm font-extrabold text-slate-800 dark:text-white leading-tight">LankaCare</div>
+              <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Pharmacy System</div>
+            </div>
           </div>
 
           {/* Navigation Links */}

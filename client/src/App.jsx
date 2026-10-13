@@ -269,6 +269,18 @@ export default function App() {
         />
       )}
 
+      {/* Footer — Created by Nexvora Solutions */}
+      <footer className="print:hidden mt-auto py-3 border-t border-slate-200 dark:border-slate-800 bg-white/60 dark:bg-slate-900/60 backdrop-blur-sm">
+        <div className="flex items-center justify-center gap-2">
+          <span className="text-[11px] text-slate-400 dark:text-slate-500 font-medium">Software Created by</span>
+          <img 
+            src="/nexvora-logo.png" 
+            alt="Nexvora Solutions" 
+            className="h-5 w-auto object-contain opacity-70 dark:opacity-50"
+          />
+        </div>
+      </footer>
+
     </div>
   );
 }
