@@ -160,10 +160,20 @@ export default function POSBilling({ medicines, customers, doctors, onRefreshDat
       const customerName = customCustomerName.trim() || customerObj?.name || 'Walk-in Customer';
 
       const salePayload = {
-        customer_id: selectedCustomerId ? Number(selectedCustomerId) : null,
-        doctor_id: selectedDoctorId ? Number(selectedDoctorId) : null,
+        customer_id: selectedCustomerId ? String(selectedCustomerId) : null,
+        doctor_id: selectedDoctorId ? String(selectedDoctorId) : null,
         customer_name: customerName,
-        items: cart,
+        subtotal: Number(subtotal) || 0,
+        discount: Number(discountAmount) || 0,
+        total_amount: Number(grandTotal) || 0,
+        items: cart.map(item => ({
+          medicine_id: item.medicine_id,
+          medicine_name: item.medicine_name,
+          batch_number: item.batch_no || '',
+          unit_price: Number(item.unit_price) || 0,
+          quantity: Number(item.quantity) || 1,
+          total_price: Number(item.subtotal) || (Number(item.unit_price) * Number(item.quantity)) || 0
+        })),
         discount_percent: Number(discountPercent) || 0,
         tax_amount: 0,
         paid_amount: tendered > 0 ? tendered : grandTotal,

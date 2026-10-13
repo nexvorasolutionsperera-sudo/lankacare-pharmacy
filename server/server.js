@@ -438,34 +438,50 @@ app.post('/api/sales', async (req, res) => {
 
     const bill_number = `INV-${Date.now().toString().slice(-6)}`;
 
+    const safeItems = Array.isArray(items) ? items : [];
+    let calculatedSubtotal = 0;
+    const formattedItems = safeItems.map(i => {
+      const qty = Number(i.quantity) || 1;
+      const price = Number(i.unit_price) || 0;
+      const total = Number(i.total_price) || (price * qty);
+      calculatedSubtotal += total;
+      return {
+        medicine_id: i.medicine_id,
+        medicine_name: i.medicine_name,
+        batch_number: i.batch_number || '',
+        unit_price: price,
+        quantity: qty,
+        total_price: total
+      };
+    });
+
+    const finalSubtotal = (!isNaN(Number(subtotal)) && Number(subtotal) > 0) ? Number(subtotal) : calculatedSubtotal;
+    const finalDiscount = Number(discount) || 0;
+    const finalTotal = (!isNaN(Number(total_amount)) && Number(total_amount) > 0) ? Number(total_amount) : Math.max(0, finalSubtotal - finalDiscount);
+
     // Decrement stock for each item
-    for (const item of items) {
-      const med = await Medicine.findById(item.medicine_id);
-      if (med) {
-        med.stock_quantity = Math.max(0, med.stock_quantity - Number(item.quantity));
-        await med.save();
+    for (const item of formattedItems) {
+      if (item.medicine_id) {
+        const med = await Medicine.findById(item.medicine_id);
+        if (med) {
+          med.stock_quantity = Math.max(0, med.stock_quantity - item.quantity);
+          await med.save();
+        }
       }
     }
 
     const sale = await Sale.create({
       bill_number,
-      customer_id,
+      customer_id: customer_id || null,
       customer_name: customer_name || 'Walking Customer',
-      doctor_id,
+      doctor_id: doctor_id || null,
       doctor_name: doctor_name || '',
       cashier_name: cashier_name || 'Staff',
-      subtotal: Number(subtotal),
-      discount: Number(discount || 0),
-      total_amount: Number(total_amount),
+      subtotal: finalSubtotal,
+      discount: finalDiscount,
+      total_amount: finalTotal,
       payment_method: payment_method || 'Cash',
-      items: items.map(i => ({
-        medicine_id: i.medicine_id,
-        medicine_name: i.medicine_name,
-        batch_number: i.batch_number || '',
-        unit_price: Number(i.unit_price),
-        quantity: Number(i.quantity),
-        total_price: Number(i.unit_price) * Number(i.quantity)
-      }))
+      items: formattedItems
     });
 
     // Update customer spent

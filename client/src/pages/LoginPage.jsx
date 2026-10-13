@@ -143,37 +143,7 @@ export default function LoginPage({ onLoginSuccess }) {
           </button>
         </form>
 
-        {/* Quick Demo Credentials for Easy Testing */}
-        <div className="mt-8 pt-6 border-t border-slate-200/80">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-slate-400 text-center mb-3">
-            Quick Fill Demo Accounts (පරීක්ෂා කිරීමට ක්ලික් කරන්න)
-          </p>
-          <div className="grid grid-cols-2 gap-2.5">
-            <button
-              type="button"
-              onClick={() => handleQuickFill('admin', 'admin123')}
-              className="p-2.5 rounded-xl bg-slate-100 hover:bg-emerald-50 hover:border-emerald-300 border border-slate-200 text-left transition-all group cursor-pointer"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-800 group-hover:text-emerald-700">Admin</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-800 font-bold">Pharmacist</span>
-              </div>
-              <p className="text-[11px] text-slate-500 font-mono mt-0.5">admin / admin123</p>
-            </button>
 
-            <button
-              type="button"
-              onClick={() => handleQuickFill('cashier', 'cashier123')}
-              className="p-2.5 rounded-xl bg-slate-100 hover:bg-blue-50 hover:border-blue-300 border border-slate-200 text-left transition-all group cursor-pointer"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-800 group-hover:text-blue-700">Cashier</span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-100 text-blue-800 font-bold">Counter</span>
-              </div>
-              <p className="text-[11px] text-slate-500 font-mono mt-0.5">cashier / cashier123</p>
-            </button>
-          </div>
-        </div>
 
         {/* Footer — Created by Nexvora Solutions */}
         <div className="text-center mt-6 pt-4 border-t border-slate-100">
