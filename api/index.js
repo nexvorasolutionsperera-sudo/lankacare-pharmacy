@@ -109,12 +109,14 @@ const SaleItemSchema = new mongoose.Schema({
 
 const SaleSchema = new mongoose.Schema({
   bill_number: { type: String, required: true, unique: true },
-  customer_name: { type: String, default: 'Walking Customer' },
+  customer_name: { type: String, default: 'Walk-in Customer' },
   doctor_name: { type: String, default: '' },
   cashier_name: { type: String, default: 'Admin' },
   subtotal: { type: Number, required: true },
   discount: { type: Number, default: 0 },
   total_amount: { type: Number, required: true },
+  paid_amount: { type: Number, default: 0 },
+  change_amount: { type: Number, default: 0 },
   payment_method: { type: String, default: 'Cash' },
   items: [SaleItemSchema]
 }, { timestamps: true });
@@ -491,7 +493,7 @@ app.get('/api/sales', async (req, res) => {
 
 app.post('/api/sales', async (req, res) => {
   try {
-    const { customer_name, doctor_name, cashier_name, subtotal, discount, total_amount, payment_method, items } = req.body;
+    const { customer_name, doctor_name, cashier_name, subtotal, discount, total_amount, paid_amount, change_amount, payment_method, items } = req.body;
 
     const safeItems = Array.isArray(items) ? items : [];
     let calculatedSubtotal = 0;
@@ -513,6 +515,8 @@ app.post('/api/sales', async (req, res) => {
     const finalSubtotal = (!isNaN(Number(subtotal)) && Number(subtotal) > 0) ? Number(subtotal) : calculatedSubtotal;
     const finalDiscount = Number(discount) || 0;
     const finalTotal = (!isNaN(Number(total_amount)) && Number(total_amount) > 0) ? Number(total_amount) : Math.max(0, finalSubtotal - finalDiscount);
+    const finalPaid = (!isNaN(Number(paid_amount)) && Number(paid_amount) > 0) ? Number(paid_amount) : finalTotal;
+    const finalChange = (!isNaN(Number(change_amount))) ? Number(change_amount) : (finalPaid > finalTotal ? Math.max(0, finalPaid - finalTotal) : 0);
 
     for (const item of formattedItems) {
       if (item.medicine_id) {
@@ -526,12 +530,14 @@ app.post('/api/sales', async (req, res) => {
 
     const sale = await Sale.create({
       bill_number: `INV-${Date.now().toString().slice(-6)}`,
-      customer_name: customer_name || 'Walking Customer',
+      customer_name: customer_name || 'Walk-in Customer',
       doctor_name: doctor_name || '',
       cashier_name: cashier_name || 'Staff',
       subtotal: finalSubtotal,
       discount: finalDiscount,
       total_amount: finalTotal,
+      paid_amount: finalPaid,
+      change_amount: finalChange,
       payment_method: payment_method || 'Cash',
       items: formattedItems
     });

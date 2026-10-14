@@ -69,15 +69,16 @@ function syncSaleToSQLite(saleData) {
 
     const stmtSale = sqliteDb.prepare(`
       INSERT INTO sales (invoice_no, customer_name, subtotal, discount_amount, total_amount, paid_amount, change_amount, payment_method)
-      VALUES (?, ?, ?, ?, ?, ?, 0, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const saleInfo = stmtSale.run(
       billNo,
-      saleData.customer_name || 'Walking Customer',
+      saleData.customer_name || 'Walk-in Customer',
       Number(saleData.subtotal || 0),
       Number(saleData.discount || 0),
       Number(saleData.total_amount || 0),
-      Number(saleData.total_amount || 0),
+      Number(saleData.paid_amount || saleData.total_amount || 0),
+      Number(saleData.change_amount || 0),
       saleData.payment_method || 'Cash'
     );
     const saleId = saleInfo.lastInsertRowid;
@@ -515,7 +516,7 @@ export async function getAllSales() {
 }
 
 export async function createSale(data) {
-  const { customer_name, doctor_name, cashier_name, subtotal, discount, total_amount, payment_method, items } = data;
+  const { customer_name, doctor_name, cashier_name, subtotal, discount, total_amount, paid_amount, change_amount, payment_method, items } = data;
   const safeItems = Array.isArray(items) ? items : [];
   let calculatedSubtotal = 0;
 
@@ -537,16 +538,20 @@ export async function createSale(data) {
   const finalSubtotal = (!isNaN(Number(subtotal)) && Number(subtotal) > 0) ? Number(subtotal) : calculatedSubtotal;
   const finalDiscount = Number(discount) || 0;
   const finalTotal = (!isNaN(Number(total_amount)) && Number(total_amount) > 0) ? Number(total_amount) : Math.max(0, finalSubtotal - finalDiscount);
+  const finalPaid = (!isNaN(Number(paid_amount)) && Number(paid_amount) > 0) ? Number(paid_amount) : finalTotal;
+  const finalChange = (!isNaN(Number(change_amount))) ? Number(change_amount) : (finalPaid > finalTotal ? Math.max(0, finalPaid - finalTotal) : 0);
   const bill_number = `INV-${Date.now().toString().slice(-6)}`;
 
   const salePayload = {
     bill_number,
-    customer_name: customer_name || 'Walking Customer',
+    customer_name: customer_name || 'Walk-in Customer',
     doctor_name: doctor_name || '',
     cashier_name: cashier_name || 'Staff',
     subtotal: finalSubtotal,
     discount: finalDiscount,
     total_amount: finalTotal,
+    paid_amount: finalPaid,
+    change_amount: finalChange,
     payment_method: payment_method || 'Cash',
     items: formattedItems
   };

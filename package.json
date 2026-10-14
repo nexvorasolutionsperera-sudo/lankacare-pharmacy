@@ -1,7 +1,7 @@
 {
-  "name": "lankacare-pharmacy",
-  "version": "1.0.0",
-  "description": "LankaCare Pharmacy Management System",
+  "name": "aaush-pharmacy",
+  "version": "2.0.0",
+  "description": "Aaush Pharmacy - Grocery & Health Medi Care System",
   "scripts": {
     "postinstall": "cd client && npm install && npm run build && cd ../server && npm install",
     "build": "cd client && npm install && npm run build",

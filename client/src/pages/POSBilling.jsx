@@ -291,7 +291,12 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
       };
 
       const result = await api.createSale(salePayload);
-      setCompletedSale(result);
+      setCompletedSale({ 
+        ...salePayload, 
+        ...(result || {}), 
+        paid_amount: salePayload.paid_amount, 
+        change_amount: salePayload.change_amount 
+      });
       clearCart();
       if (onRefreshData) onRefreshData();
     } catch (err) {

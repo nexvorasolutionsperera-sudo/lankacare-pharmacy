@@ -20,8 +20,8 @@ export default function ReceiptModal({ sale, onClose }) {
   const subtotal = safeNum(sale.subtotal);
   const discountAmount = safeNum(sale.discount_amount || sale.discount);
   const totalAmount = safeNum(sale.total_amount);
-  const paidAmount = safeNum(sale.paid_amount || sale.total_amount);
-  const changeAmount = safeNum(sale.change_amount || (paidAmount > totalAmount ? paidAmount - totalAmount : 0));
+  const paidAmount = safeNum(sale.paid_amount || sale.paidAmount || (sale.payment_method === 'Card' ? totalAmount : totalAmount));
+  const changeAmount = safeNum(sale.change_amount || sale.changeAmount || (paidAmount > totalAmount ? paidAmount - totalAmount : 0));
   const taxAmount = safeNum(sale.tax_amount);
 
   const saleDate = sale.created_at ? new Date(sale.created_at) : new Date();
@@ -39,14 +39,14 @@ export default function ReceiptModal({ sale, onClose }) {
       <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200/80 my-8">
         
         {/* Modal Action Header (Not printed) */}
-        <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white print:hidden">
+        <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 text-white print:hidden">
           <div className="flex items-center gap-2.5">
             <div className="p-1.5 bg-white/20 rounded-xl backdrop-blur-xs">
               <CheckCircle className="w-5 h-5 text-white" />
             </div>
             <div>
               <h3 className="font-extrabold text-sm leading-tight">ගෙවීම් රිසිට්පත / Bill Receipt</h3>
-              <p className="text-[11px] text-emerald-100 font-medium">Payment Completed Successfully</p>
+              <p className="text-[11px] text-indigo-100 font-medium">Payment Completed Successfully</p>
             </div>
           </div>
           <button 
@@ -65,14 +65,14 @@ export default function ReceiptModal({ sale, onClose }) {
             <div className="flex justify-center mb-2">
               <img 
                 src="/pharmacy-logo.png" 
-                alt="LankaCare Pharmacy" 
+                alt="Aaush pharmacy" 
                 className="h-14 w-auto object-contain mx-auto"
               />
             </div>
             <h2 className="text-lg font-black uppercase tracking-tight text-slate-900 font-sans leading-tight">
               Aaush pharmacy
             </h2>
-            <p className="text-[11px] font-sans font-black text-emerald-800 tracking-wider">
+            <p className="text-[11px] font-sans font-black text-sky-800 tracking-wider">
               GROCERY & HEALTH MEDI CARE
             </p>
             <p className="text-[10px] text-slate-500 font-sans italic">
@@ -87,7 +87,7 @@ export default function ReceiptModal({ sale, onClose }) {
           <div className="py-3 border-b border-dashed border-slate-300 space-y-1.5 text-[11px]">
             <div className="flex justify-between items-center">
               <span className="text-slate-500">Invoice No:</span>
-              <span className="font-bold text-slate-900 px-2 py-0.5 bg-slate-100 rounded text-xs">
+              <span className="font-bold text-slate-900 px-2 py-0.5 bg-slate-100 rounded text-xs font-mono">
                 {invoiceNo}
               </span>
             </div>
@@ -96,7 +96,7 @@ export default function ReceiptModal({ sale, onClose }) {
               <span className="font-medium text-slate-800">{formattedDateTime}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Customer:</span>
+              <span className="text-slate-500">Customer (පාරිභෝගිකයා):</span>
               <span className="font-bold text-slate-900">{sale.customer_name || 'Walk-in Customer'}</span>
             </div>
             {sale.doctor_name && (
@@ -111,7 +111,7 @@ export default function ReceiptModal({ sale, onClose }) {
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Payment Mode:</span>
-              <span className="font-bold text-emerald-700 uppercase">{sale.payment_method || 'Cash'}</span>
+              <span className="font-bold text-indigo-700 uppercase">{sale.payment_method || 'Cash'}</span>
             </div>
           </div>
 
@@ -177,15 +177,15 @@ export default function ReceiptModal({ sale, onClose }) {
             {/* NET TOTAL */}
             <div className="flex justify-between items-center font-black text-base pt-2 border-t border-slate-200 text-slate-900">
               <span className="tracking-tight uppercase">Net Total (ශුද්ධ මුදල):</span>
-              <span className="text-emerald-700 text-lg font-black">{formatCurrency(totalAmount)}</span>
+              <span className="text-slate-900 text-lg font-black">{formatCurrency(totalAmount)}</span>
             </div>
 
             {/* PAYMENT DETAILS (CARD VS CASH) */}
             {sale.payment_method === 'Card' ? (
               <div className="pt-2">
-                <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200/80 text-center">
-                  <div className="flex items-center justify-center gap-1.5 text-xs font-black text-emerald-800">
-                    <CheckCircle className="w-4 h-4 text-emerald-600" />
+                <div className="p-2 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                  <div className="flex items-center justify-center gap-1.5 text-xs font-black text-slate-800">
+                    <CheckCircle className="w-4 h-4 text-indigo-600" />
                     <span>PAID BY CARD (කාඩ්පතින් ගෙවන ලදී)</span>
                   </div>
                   {sale.card_last4 && (
@@ -193,33 +193,35 @@ export default function ReceiptModal({ sale, onClose }) {
                       Card: **** **** **** {sale.card_last4}
                     </p>
                   )}
-                  <p className="text-[10px] font-bold text-emerald-700 mt-0.5">
+                  <p className="text-[10px] font-bold text-slate-700 mt-0.5">
                     Amount: {formatCurrency(totalAmount)} • Approved ✓
                   </p>
                 </div>
               </div>
             ) : (
-              <>
-                <div className="flex justify-between text-slate-700 pt-1.5 text-[11px]">
-                  <span>Cash Tendered (දුන් මුදල):</span>
-                  <span className="font-semibold">{formatCurrency(paidAmount)}</span>
+              <div className="pt-2 border-t border-dotted border-slate-300 space-y-1">
+                {/* Cash Tendered */}
+                <div className="flex justify-between items-center text-slate-800 text-xs">
+                  <span className="font-bold">Cash Tendered (දුන් මුදල):</span>
+                  <span className="font-black text-sm font-mono">{formatCurrency(paidAmount)}</span>
                 </div>
 
+                {/* Change Due (Bold and very prominent) */}
                 <div className="flex justify-between items-center font-black text-slate-900 pt-1 text-xs">
-                  <span className="text-slate-700">Change Due (ඉතිරි මුදල):</span>
-                  <span className="text-emerald-800 text-sm font-black bg-emerald-50 px-2 py-0.5 rounded">
+                  <span className="font-black text-slate-900">Change Due (ඉතිරි මුදල):</span>
+                  <span className="text-slate-950 text-base font-black font-mono px-2 py-0.5 rounded bg-slate-100 border border-slate-300 print:bg-transparent print:border-b-2 print:border-black">
                     {formatCurrency(changeAmount)}
                   </span>
                 </div>
-              </>
+              </div>
             )}
           </div>
 
           {/* You Saved Badge (if discount given) */}
           {discountAmount > 0 && (
-            <div className="my-2.5 p-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-xl text-center">
-              <p className="text-[11px] font-extrabold text-emerald-800 flex items-center justify-center gap-1 font-sans">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+            <div className="my-2.5 p-2 bg-gradient-to-r from-indigo-50 to-sky-50 border border-indigo-200/80 rounded-xl text-center">
+              <p className="text-[11px] font-extrabold text-indigo-900 flex items-center justify-center gap-1 font-sans">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
                 ඔබ ඉතිරි කරගත් මුදල / You Saved: {formatCurrency(discountAmount)}!
               </p>
             </div>
@@ -235,8 +237,8 @@ export default function ReceiptModal({ sale, onClose }) {
 
           {/* Footer Warm Note & Branding */}
           <div className="text-center pt-2 space-y-1 font-sans">
-            <div className="flex items-center justify-center gap-1.5 text-emerald-800 font-extrabold text-xs">
-              <HeartHandshake className="w-4 h-4 text-emerald-600" />
+            <div className="flex items-center justify-center gap-1.5 text-slate-800 font-extrabold text-xs">
+              <HeartHandshake className="w-4 h-4 text-indigo-600" />
               <span>සුවපත් වේවා! ඉක්මන් සුවය පතමු!</span>
             </div>
             <p className="text-[10px] text-slate-500 font-medium">Thank you for visiting! Get well soon!</p>
@@ -254,7 +256,7 @@ export default function ReceiptModal({ sale, onClose }) {
         <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap gap-2.5 print:hidden">
           <button
             onClick={handlePrint}
-            className="flex-1 min-w-[130px] flex items-center justify-center gap-2 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-600/25 transition-all active:scale-95 cursor-pointer text-xs"
+            className="flex-1 min-w-[130px] flex items-center justify-center gap-2 py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold rounded-2xl shadow-lg shadow-indigo-600/25 transition-all active:scale-95 cursor-pointer text-xs"
           >
             <Printer className="w-4 h-4" />
             Print Bill (මුද්‍රණය)

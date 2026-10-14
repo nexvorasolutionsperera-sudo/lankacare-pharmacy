@@ -72,6 +72,8 @@ const SaleSchema = new mongoose.Schema({
   subtotal: { type: Number, required: true },
   discount: { type: Number, default: 0 },
   total_amount: { type: Number, required: true },
+  paid_amount: { type: Number, default: 0 },
+  change_amount: { type: Number, default: 0 },
   payment_method: { type: String, default: 'Cash' },
   items: [SaleItemSchema]
 }, { timestamps: true });
