@@ -3,7 +3,7 @@ export const translations = {
     // Navigation
     dashboard: "Dashboard",
     posBilling: "POS Billing",
-    inventory: "Medicines & Grocery",
+    inventory: "Medicines, Grocery & Books",
     dealers: "Dealers",
     alerts: "Alerts",
     customersDocs: "Customers & Doctors",
@@ -24,12 +24,13 @@ export const translations = {
     themeAmber: "Warm Amber",
     
     // Dashboard
-    welcomeTitle: "Aaush Pharmacy & Grocery Management",
-    welcomeSubtitle: "Real-time billing for medicines, healthcare & grocery items, inventory control and profit analytics.",
+    welcomeTitle: "Aaush Pharmacy, Grocery & Bookshop",
+    welcomeSubtitle: "Real-time billing for medicines, stationery books, healthcare & grocery items, inventory control and profit analytics.",
     openPosCounter: "Open POS Counter",
-    addMedicine: "Add Medicine / Grocery Item",
+    addMedicine: "Add Medicine / Grocery / Book Item",
     addMedicineOnly: "Add Medicine",
     addGroceryOnly: "Add Grocery Item",
+    addBookshopOnly: "Add Book / Stationery",
     dealerStockInward: "Dealer Stock Inward",
     todaySales: "Today's Sales",
     billsCompleted: "bills completed",
@@ -201,7 +202,7 @@ export const translations = {
     // Navigation
     dashboard: "දළ විශ්ලේෂණය",
     posBilling: "කවුන්ටරය (POS)",
-    inventory: "ඖෂධ සහ සිල්ලර (Grocery)",
+    inventory: "ඖෂධ, සිල්ලර & පොත්පත්",
     dealers: "ඩීලර්ස් / සැපයුම්",
     alerts: "අනතුරු ඇඟවීම්",
     customersDocs: "පාරිභෝගිකයින් & වෛද්‍යවරුන්",
@@ -222,12 +223,13 @@ export const translations = {
     themeAmber: "උණුසුම් ඇම්බර්",
 
     // Dashboard
-    welcomeTitle: "Aaush Pharmacy & Grocery Management",
-    welcomeSubtitle: "ඖෂධ, සෞඛ්‍යාරක්ෂක සහ සිල්ලර (Grocery) භාණ්ඩ ක්ෂණික බිල්පත් සහ තොග කළමනාකරණය.",
+    welcomeTitle: "Aaush Pharmacy, Grocery & Bookshop",
+    welcomeSubtitle: "ඖෂධ, සිල්ලර (Grocery) සහ පොත්පත්/ස්ටේෂනරි ක්ෂණික බිල්පත් සහ තොග කළමනාකරණය.",
     openPosCounter: "කවුන්ටරය විවෘත කරන්න",
-    addMedicine: "නව ඖෂධයක් / Grocery භාණ්ඩයක් එක් කරන්න",
+    addMedicine: "නව ඖෂධ / සිල්ලර / පොත් එක් කරන්න",
     addMedicineOnly: "💊 ඖෂධ එක් කරන්න",
-    addGroceryOnly: "🛒 Grocery භාණ්ඩයක් එක් කරන්න",
+    addGroceryOnly: "🛒 Grocery භාණ්ඩ එක් කරන්න",
+    addBookshopOnly: "📚 පොත්පත් / ස්ටේෂනරි එක් කරන්න",
     dealerStockInward: "ඩීලර් තොග භාරගැනීම (GRN)",
     todaySales: "අද දින විකුණුම්",
     billsCompleted: "බිල්පත් නිකුත් විය",

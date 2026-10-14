@@ -18,13 +18,14 @@ import {
   Pill,
   ShoppingBag,
   Activity,
-  Smartphone
+  Smartphone,
+  BookOpen
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../api';
 import Logo from '../components/Logo';
 import { pdfGenerator } from '../utils/pdfGenerator';
 
-export default function Dashboard({ stats, setActiveTab, onOpenAddMed, onOpenAddGrocery, onOpenGRN, t }) {
+export default function Dashboard({ stats, setActiveTab, onOpenAddMed, onOpenAddGrocery, onOpenAddBookshop, onOpenGRN, t }) {
   if (!stats) {
     return (
       <div className="p-12 text-center text-slate-500 dark:text-slate-400">
@@ -117,6 +118,15 @@ export default function Dashboard({ stats, setActiveTab, onOpenAddMed, onOpenAdd
             >
               <ShoppingBag className="w-4 h-4" />
               <span>{t.addGroceryOnly || '+ Add Grocery'}</span>
+            </button>
+
+            {/* Separate Bookshop Add */}
+            <button
+              onClick={onOpenAddBookshop}
+              className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-teal-600/90 hover:bg-teal-600 text-white font-bold text-xs shadow-md border border-teal-400/30 transition-all cursor-pointer active:scale-95"
+            >
+              <BookOpen className="w-4 h-4" />
+              <span>{t.addBookshopOnly || '+ Add Book / Stationery'}</span>
             </button>
 
             {/* Medicare / Lab Tests quick button */}

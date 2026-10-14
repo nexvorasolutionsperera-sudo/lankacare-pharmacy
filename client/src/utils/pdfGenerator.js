@@ -28,18 +28,18 @@ export const pdfGenerator = {
     // Pharmacy Header
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.setTextColor(16, 120, 80);
+    doc.setTextColor(30, 64, 175);
     doc.text('AAUSH PHARMACY', 40, 9, { align: 'center' });
 
-    doc.setFontSize(7.5);
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(20, 20, 20);
-    doc.text('GROCERY & HEALTH MEDI CARE', 40, 13, { align: 'center' });
+    doc.text('GROCERY, BOOKSHOP & HEALTH MEDI CARE', 40, 13, { align: 'center' });
 
-    doc.setFontSize(6.5);
+    doc.setFontSize(6.2);
     doc.setFont('helvetica', 'italic');
     doc.setTextColor(80, 80, 80);
-    doc.text('Your Trusted Source for Wellness | Tel: 011-2925840', 40, 16.5, { align: 'center' });
+    doc.text('Your Trusted Source for Wellness, Books & Essentials | Tel: 011-2925840', 40, 16.5, { align: 'center' });
 
     // Divider line
     doc.setDrawColor(200, 200, 200);
@@ -122,15 +122,15 @@ export const pdfGenerator = {
     currY += 4.5;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
-    doc.setTextColor(16, 120, 80);
-    doc.text('NET TOTAL:', 40, currY);
+    doc.setTextColor(30, 64, 175);
+    doc.text('NET TOTAL (LKR):', 40, currY);
     doc.text(fmtLKR(totalAmount), 76, currY, { align: 'right' });
 
     currY += 4;
     if (sale.payment_method === 'Card') {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7.5);
-      doc.setTextColor(16, 120, 80);
+      doc.setTextColor(30, 64, 175);
       doc.text('Payment Mode:', 40, currY);
       doc.text('CARD (APPROVED)', 76, currY, { align: 'right' });
       if (sale.card_last4) {
@@ -142,14 +142,17 @@ export const pdfGenerator = {
         doc.text(`**** ${sale.card_last4}`, 76, currY, { align: 'right' });
       }
     } else {
-      doc.setFont('helvetica', 'normal');
+      doc.setFont('helvetica', 'bold');
       doc.setFontSize(7.5);
-      doc.setTextColor(60, 60, 60);
-      doc.text('Tendered:', 40, currY);
+      doc.setTextColor(50, 50, 50);
+      doc.text('Tendered (Paid):', 40, currY);
       doc.text(fmtLKR(paidAmount), 76, currY, { align: 'right' });
 
       currY += 3.5;
-      doc.text('Change:', 40, currY);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(15, 23, 42);
+      doc.text('Change Due:', 40, currY);
       doc.text(fmtLKR(changeAmount), 76, currY, { align: 'right' });
     }
 
@@ -157,7 +160,7 @@ export const pdfGenerator = {
     currY += 7;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7.5);
-    doc.setTextColor(16, 120, 80);
+    doc.setTextColor(30, 64, 175);
     doc.text('Thank You! Get Well Soon!', 40, currY, { align: 'center' });
 
     doc.setFont('helvetica', 'normal');
@@ -174,13 +177,13 @@ export const pdfGenerator = {
     const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
 
     // Header banner
-    doc.setFillColor(16, 140, 90);
+    doc.setFillColor(30, 58, 138); // blue-900 / indigo
     doc.rect(0, 0, 210, 26, 'F');
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
     doc.setTextColor(255, 255, 255);
-    doc.text('LANKA CARE PHARMACY & HEALTHCARE', 14, 11);
+    doc.text('AAUSH PHARMACY - GROCERY, BOOKSHOP & HEALTHCARE', 14, 11);
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
@@ -216,7 +219,7 @@ export const pdfGenerator = {
     y = doc.lastAutoTable.finalY + 8;
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
-    doc.text('2. Top-Selling Medicines in Selected Period', 14, y);
+    doc.text('2. Top-Selling Items in Selected Period', 14, y);
 
     const topRows = (summary?.topMedicines || []).map((m, idx) => [
       idx + 1,
@@ -229,10 +232,10 @@ export const pdfGenerator = {
     autoTable(doc, {
       startY: y + 2,
       margin: { left: 14, right: 14 },
-      headStyles: { fillColor: [16, 140, 90], textColor: [255, 255, 255] },
+      headStyles: { fillColor: [30, 64, 175], textColor: [255, 255, 255] },
       styles: { fontSize: 8 },
-      head: [['#', 'Medicine Name', 'Units Sold', 'Total Revenue', 'Profit Earned']],
-      body: topRows.length ? topRows : [['-', 'No medicines recorded in range', '-', '-', '-']],
+      head: [['#', 'Item Name', 'Units Sold', 'Total Revenue', 'Profit Earned']],
+      body: topRows.length ? topRows : [['-', 'No items recorded in range', '-', '-', '-']],
       columnStyles: {
         0: { cellWidth: 10, halign: 'center' },
         2: { halign: 'center', fontStyle: 'bold' },
@@ -273,7 +276,7 @@ export const pdfGenerator = {
       doc.setPage(i);
       doc.setFontSize(8);
       doc.setTextColor(150, 150, 150);
-      doc.text(`LankaCare Pharmacy Management System • Page ${i} of ${pageCount}`, 105, 290, { align: 'center' });
+      doc.text(`Aaush Pharmacy POS & ERP System • Page ${i} of ${pageCount}`, 105, 290, { align: 'center' });
     }
 
     doc.save(`Sales-Report-${startDate}-to-${endDate}.pdf`);
@@ -284,17 +287,17 @@ export const pdfGenerator = {
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
 
     // Banner
-    doc.setFillColor(16, 140, 90);
+    doc.setFillColor(30, 58, 138);
     doc.rect(0, 0, 297, 24, 'F');
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
     doc.setTextColor(255, 255, 255);
-    doc.text('LANKA CARE PHARMACY - CURRENT STOCK & EXPIRY AUDIT REPORT', 14, 11);
+    doc.text('AAUSH PHARMACY - CURRENT STOCK & INVENTORY AUDIT REPORT', 14, 11);
 
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Total ${medicines.length} registered pharmaceutical items • Date: ${new Date().toLocaleDateString('en-GB')}`, 14, 18);
+    doc.text(`Medicines, Grocery & Bookshop Items (${medicines.length} total) • Date: ${new Date().toLocaleDateString('en-GB')}`, 14, 18);
 
     const rows = medicines.map((m, idx) => {
       const isOut = m.stock_quantity <= 0;
@@ -367,7 +370,7 @@ export const pdfGenerator = {
 
     doc.setFontSize(8.5);
     doc.setTextColor(56, 189, 248); // sky-400
-    doc.text('GROCERY & HEALTH MEDI CARE | CLINICAL DIAGNOSTICS & LAB SERVICES', 14, 19);
+    doc.text('GROCERY, BOOKSHOP & HEALTH MEDI CARE | CLINICAL DIAGNOSTICS & LAB SERVICES', 14, 19);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);

@@ -45,7 +45,7 @@ export default function Sidebar({
     { id: 'pos', label: t.posBilling, icon: ShoppingCart, highlight: true },
     { 
       id: 'medicines', 
-      label: t.inventory || 'Medicines & Grocery', 
+      label: t.inventory || 'Medicines, Grocery & Books', 
       icon: Pill,
       badge: lowStockCount > 0 ? lowStockCount : null,
       badgeColor: 'bg-amber-500'
@@ -102,7 +102,7 @@ export default function Sidebar({
                 <span className="w-1.5 h-1.5 rounded-full bg-sky-400 inline-block animate-pulse" />
               </div>
               <div className="text-[9px] text-sky-400 font-extrabold uppercase tracking-wider">
-                GROCERY & HEALTH MEDI CARE
+                GROCERY, BOOKSHOP & HEALTH MEDI CARE
               </div>
             </div>
           </div>

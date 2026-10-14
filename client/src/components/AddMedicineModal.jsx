@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Pill, ShoppingBag, Save, AlertCircle } from 'lucide-react';
+import { X, Pill, ShoppingBag, BookOpen, Save, AlertCircle } from 'lucide-react';
 import { api } from '../api';
 
 export default function AddMedicineModal({ isOpen, onClose, onSaved, medicineToEdit, categories, suppliers, initialType = 'medicine' }) {
@@ -30,17 +30,20 @@ export default function AddMedicineModal({ isOpen, onClose, onSaved, medicineToE
 
   useEffect(() => {
     if (medicineToEdit) {
-      const isGrocery = medicineToEdit.category === 'Grocery & Essentials' || 
+      const isBook = (medicineToEdit.category && (medicineToEdit.category.includes('Book') || medicineToEdit.category.includes('Stationery'))) ||
+                     medicineToEdit.form === 'Book' || medicineToEdit.form === 'Ream';
+      const isGrocery = !isBook && (medicineToEdit.category === 'Grocery & Essentials' || 
                         medicineToEdit.category === 'Personal Care & Hygiene' ||
-                        ['Pack', 'Bottle', 'Bar', 'Box', 'Piece'].includes(medicineToEdit.form);
-      setItemType(isGrocery ? 'grocery' : 'medicine');
+                        ['Pack', 'Bottle', 'Bar', 'Box', 'Piece'].includes(medicineToEdit.form));
+      
+      setItemType(isBook ? 'bookshop' : (isGrocery ? 'grocery' : 'medicine'));
 
       setFormData({
         name: medicineToEdit.name || '',
         generic_name: medicineToEdit.generic_name || '',
         category_id: medicineToEdit.category_id || '',
         dosage: medicineToEdit.dosage || '',
-        form: medicineToEdit.form || (isGrocery ? 'Pack' : 'Tablet'),
+        form: medicineToEdit.form || (isBook ? 'Book' : (isGrocery ? 'Pack' : 'Tablet')),
         batch_no: medicineToEdit.batch_no || '',
         barcode: medicineToEdit.barcode || '',
         cost_price: medicineToEdit.cost_price || '',
@@ -55,24 +58,31 @@ export default function AddMedicineModal({ isOpen, onClose, onSaved, medicineToE
     } else {
       const currentType = initialType || 'medicine';
       setItemType(currentType);
-      const defaultGroceryCat = categories.find(c => c.name?.includes('Grocery'))?.id || categories?.[0]?.id || '';
-      const defaultMedCat = categories.find(c => !c.name?.includes('Grocery'))?.id || categories?.[0]?.id || '';
+      const defaultGroceryCat = categories.find(c => c.name?.toLowerCase().includes('grocery'))?.id;
+      const defaultBookCat = categories.find(c => c.name?.toLowerCase().includes('book') || c.name?.toLowerCase().includes('stationery'))?.id;
+      const defaultMedCat = categories.find(c => !c.name?.toLowerCase().includes('grocery') && !c.name?.toLowerCase().includes('book'))?.id;
+
+      const chosenCat = currentType === 'bookshop' 
+        ? (defaultBookCat || categories?.[0]?.id || '') 
+        : (currentType === 'grocery' ? (defaultGroceryCat || categories?.[0]?.id || '') : (defaultMedCat || categories?.[0]?.id || ''));
 
       setFormData({
         name: '',
         generic_name: '',
-        category_id: currentType === 'grocery' ? defaultGroceryCat : defaultMedCat,
-        dosage: currentType === 'grocery' ? 'Standard Pack' : '',
-        form: currentType === 'grocery' ? 'Pack' : 'Tablet',
-        batch_no: currentType === 'grocery' ? `GR-${Math.floor(1000 + Math.random() * 9000)}` : `BT-${Math.floor(1000 + Math.random() * 9000)}`,
+        category_id: chosenCat,
+        dosage: currentType === 'bookshop' ? 'Stationery / Book' : (currentType === 'grocery' ? 'Standard Pack' : ''),
+        form: currentType === 'bookshop' ? 'Book' : (currentType === 'grocery' ? 'Pack' : 'Tablet'),
+        batch_no: currentType === 'bookshop' 
+          ? `BK-${Math.floor(1000 + Math.random() * 9000)}` 
+          : (currentType === 'grocery' ? `GR-${Math.floor(1000 + Math.random() * 9000)}` : `BT-${Math.floor(1000 + Math.random() * 9000)}`),
         barcode: '',
         cost_price: '',
         selling_price: '',
         stock_quantity: '',
         min_stock_alert: '10',
-        expiry_date: '',
+        expiry_date: currentType === 'bookshop' ? '2099-12-31' : '',
         supplier_id: suppliers?.[0]?.id || '',
-        rack_location: currentType === 'grocery' ? 'Grocery Shelf' : 'Rack A-1',
+        rack_location: currentType === 'bookshop' ? 'Book Rack A' : (currentType === 'grocery' ? 'Grocery Shelf' : 'Rack A-1'),
         requires_prescription: 0
       });
     }
@@ -89,26 +99,38 @@ export default function AddMedicineModal({ isOpen, onClose, onSaved, medicineToE
 
   const handleTypeSwitch = (type) => {
     setItemType(type);
-    if (type === 'grocery') {
+    if (type === 'bookshop') {
+      const bCat = categories.find(c => c.name?.toLowerCase().includes('book') || c.name?.toLowerCase().includes('stationery'))?.id;
+      setFormData(prev => ({
+        ...prev,
+        form: 'Book',
+        category_id: bCat || prev.category_id,
+        dosage: 'Stationery / Book',
+        rack_location: 'Book Rack A',
+        expiry_date: prev.expiry_date || '2099-12-31',
+        batch_no: prev.batch_no.startsWith('BK-') ? prev.batch_no : `BK-${Math.floor(1000 + Math.random() * 9000)}`,
+        requires_prescription: 0
+      }));
+    } else if (type === 'grocery') {
       const gCat = categories.find(c => c.name?.toLowerCase().includes('grocery'))?.id;
       setFormData(prev => ({
         ...prev,
         form: 'Pack',
         category_id: gCat || prev.category_id,
-        dosage: prev.dosage || 'Standard Pack',
+        dosage: prev.dosage === 'Stationery / Book' ? 'Standard Pack' : prev.dosage || 'Standard Pack',
         rack_location: 'Grocery Shelf',
-        batch_no: prev.batch_no.startsWith('BT-') ? `GR-${Math.floor(1000 + Math.random() * 9000)}` : prev.batch_no,
+        batch_no: prev.batch_no.startsWith('GR-') ? prev.batch_no : `GR-${Math.floor(1000 + Math.random() * 9000)}`,
         requires_prescription: 0
       }));
     } else {
-      const mCat = categories.find(c => !c.name?.toLowerCase().includes('grocery'))?.id;
+      const mCat = categories.find(c => !c.name?.toLowerCase().includes('grocery') && !c.name?.toLowerCase().includes('book'))?.id;
       setFormData(prev => ({
         ...prev,
         form: 'Tablet',
         category_id: mCat || prev.category_id,
-        dosage: prev.dosage === 'Standard Pack' ? '' : prev.dosage,
+        dosage: (prev.dosage === 'Standard Pack' || prev.dosage === 'Stationery / Book') ? '' : prev.dosage,
         rack_location: 'Rack A-1',
-        batch_no: prev.batch_no.startsWith('GR-') ? `BT-${Math.floor(1000 + Math.random() * 9000)}` : prev.batch_no
+        batch_no: prev.batch_no.startsWith('BT-') ? prev.batch_no : `BT-${Math.floor(1000 + Math.random() * 9000)}`
       }));
     }
   };
@@ -145,27 +167,38 @@ export default function AddMedicineModal({ isOpen, onClose, onSaved, medicineToE
   };
 
   const isGrocery = itemType === 'grocery';
+  const isBookshop = itemType === 'bookshop';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
       <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[92vh] flex flex-col overflow-hidden border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
         
         {/* Header */}
-        <div className={`flex items-center justify-between px-6 py-4 border-b border-slate-100 ${isGrocery ? 'bg-amber-50/70' : 'bg-indigo-50/70'}`}>
+        <div className={`flex items-center justify-between px-6 py-4 border-b border-slate-100 ${
+          isBookshop ? 'bg-sky-50/70' : (isGrocery ? 'bg-amber-50/70' : 'bg-indigo-50/70')
+        }`}>
           <div className="flex items-center gap-3">
-            <div className={`p-2.5 rounded-xl shadow-xs ${isGrocery ? 'bg-amber-500 text-white' : 'bg-indigo-600 text-white'}`}>
-              {isGrocery ? <ShoppingBag className="w-5 h-5" /> : <Pill className="w-5 h-5" />}
+            <div className={`p-2.5 rounded-xl shadow-xs text-white ${
+              isBookshop ? 'bg-sky-600' : (isGrocery ? 'bg-amber-500' : 'bg-indigo-600')
+            }`}>
+              {isBookshop ? <BookOpen className="w-5 h-5" /> : (isGrocery ? <ShoppingBag className="w-5 h-5" /> : <Pill className="w-5 h-5" />)}
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-black text-slate-800">
                 {medicineToEdit 
-                  ? (isGrocery ? 'Grocery භාණ්ඩ තොරතුරු වෙනස් කිරීම (Edit Grocery Item)' : 'ඖෂධ තොරතුරු වෙනස් කිරීම (Edit Medicine)') 
-                  : (isGrocery ? 'නව Grocery භාණ්ඩයක් එකතු කිරීම (Add Grocery Item)' : 'නව ඖෂධයක් එකතු කිරීම (Add Medicine)')}
+                  ? (isBookshop 
+                      ? 'පොත්පත් / ස්ටේෂනරි වෙනස් කිරීම (Edit Book / Stationery)' 
+                      : (isGrocery ? 'Grocery භාණ්ඩ තොරතුරු වෙනස් කිරීම (Edit Grocery Item)' : 'ඖෂධ තොරතුරු වෙනස් කිරීම (Edit Medicine)'))
+                  : (isBookshop 
+                      ? 'නව පොත්පත් / ස්ටේෂනරි එකතු කිරීම (Add Book / Stationery)' 
+                      : (isGrocery ? 'නව Grocery භාණ්ඩයක් එකතු කිරීම (Add Grocery Item)' : 'නව ඖෂධයක් එකතු කිරීම (Add Medicine)'))}
               </h2>
               <p className="text-xs text-slate-500 font-medium">
-                {isGrocery 
-                  ? 'Add food, beverages, hygiene or retail consumer goods to stock' 
-                  : 'Add pharmaceutical drugs, syrups, tablets or clinical medicines to inventory'}
+                {isBookshop 
+                  ? 'Add CR books, exercise books, pens, stationery & school/office supplies'
+                  : (isGrocery 
+                      ? 'Add food, beverages, hygiene or retail consumer goods to stock' 
+                      : 'Add pharmaceutical drugs, syrups, tablets or clinical medicines to inventory')}
               </p>
             </div>
           </div>
@@ -179,30 +212,42 @@ export default function AddMedicineModal({ isOpen, onClose, onSaved, medicineToE
 
         {/* Item Type Switcher Tabs (Only if creating new item) */}
         {!medicineToEdit && (
-          <div className="px-6 py-2.5 bg-slate-100/80 border-b border-slate-200 flex items-center gap-2">
+          <div className="px-6 py-2.5 bg-slate-100/80 border-b border-slate-200 grid grid-cols-3 gap-2">
             <button
               type="button"
               onClick={() => handleTypeSwitch('medicine')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                !isGrocery 
+              className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                itemType === 'medicine'
                   ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30' 
                   : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
               }`}
             >
-              <Pill className="w-4 h-4" />
+              <Pill className="w-3.5 h-3.5" />
               <span>💊 ඖෂධ (Medicine)</span>
             </button>
             <button
               type="button"
               onClick={() => handleTypeSwitch('grocery')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2 px-3 rounded-xl text-xs sm:text-sm font-bold transition-all cursor-pointer ${
-                isGrocery 
+              className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                itemType === 'grocery' 
                   ? 'bg-amber-600 text-white shadow-md shadow-amber-600/30' 
                   : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
               }`}
             >
-              <ShoppingBag className="w-4 h-4" />
-              <span>🛒 Grocery / සිල්ලර භාණ්ඩ</span>
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span>🛒 Grocery / සිල්ලර</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleTypeSwitch('bookshop')}
+              className={`flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                itemType === 'bookshop' 
+                  ? 'bg-sky-600 text-white shadow-md shadow-sky-600/30' 
+                  : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+              }`}
+            >
+              <BookOpen className="w-3.5 h-3.5" />
+              <span>📚 පොත්පත් & ස්ටේෂනරි</span>
             </button>
           </div>
         )}
@@ -221,14 +266,18 @@ export default function AddMedicineModal({ isOpen, onClose, onSaved, medicineToE
             {/* Product / Brand Name */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                {isGrocery ? 'Product / Item Name (භාණ්ඩයේ නම) *' : 'Medicine Brand Name (වෙළඳ නාමය) *'}
+                {isBookshop 
+                  ? 'Book / Stationery Item Name (භාණ්ඩයේ නම) *' 
+                  : (isGrocery ? 'Product / Item Name (භාණ්ඩයේ නම) *' : 'Medicine Brand Name (වෙළඳ නාමය) *')}
               </label>
               <input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                placeholder={isGrocery ? "e.g. Anchor Milk Powder 400g, Sunlight Soap" : "e.g. Panadol Actifast 500mg"}
+                placeholder={isBookshop 
+                  ? "e.g. Atlas CR Book 120 Pages Ruled, Lexi Blue Pen" 
+                  : (isGrocery ? "e.g. Anchor Milk Powder 400g, Sunlight Soap" : "e.g. Panadol Actifast 500mg")}
                 required
                 className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm font-semibold"
               />
@@ -237,14 +286,18 @@ export default function AddMedicineModal({ isOpen, onClose, onSaved, medicineToE
             {/* Generic Name / Manufacturer */}
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">
-                {isGrocery ? 'Brand / Manufacturer (සමාගම / වෙළඳනාමය)' : 'Generic Name (ජෙනරික් නම)'}
+                {isBookshop 
+                  ? 'Brand / Publisher (සමාගම / ප්‍රකාශකයා)' 
+                  : (isGrocery ? 'Brand / Manufacturer (සමාගම / වෙළඳනාමය)' : 'Generic Name (ජෙනරික් නම)')}
               </label>
               <input
                 type="text"
                 name="generic_name"
                 value={formData.generic_name}
                 onChange={handleChange}
-                placeholder={isGrocery ? "e.g. Fonterra, Unilever, Nestle" : "e.g. Paracetamol, Amoxicillin"}
+                placeholder={isBookshop 
+                  ? "e.g. Atlas, Richard, Lexi, Nataraj, Double A" 
+                  : (isGrocery ? "e.g. Fonterra, Unilever, Nestle" : "e.g. Paracetamol, Amoxicillin")}
                 className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
               />
             </div>
@@ -269,14 +322,18 @@ export default function AddMedicineModal({ isOpen, onClose, onSaved, medicineToE
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">
-                  {isGrocery ? 'Net Weight / Pack Size (බර)' : 'Dosage (මාත්‍රාව)'}
+                  {isBookshop 
+                    ? 'Pages / Specs (පිටු/විස්තර)' 
+                    : (isGrocery ? 'Net Weight / Pack Size (බර)' : 'Dosage (මාත්‍රාව)')}
                 </label>
                 <input
                   type="text"
                   name="dosage"
                   value={formData.dosage}
                   onChange={handleChange}
-                  placeholder={isGrocery ? "e.g. 400g, 1L, 100g" : "e.g. 500mg, 10ml"}
+                  placeholder={isBookshop 
+                    ? "e.g. 120 Pages, 0.7mm Blue, 80 GSM" 
+                    : (isGrocery ? "e.g. 400g, 1L, 100g" : "e.g. 500mg, 10ml")}
                   className="w-full px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
                 />
               </div>
@@ -288,7 +345,18 @@ export default function AddMedicineModal({ isOpen, onClose, onSaved, medicineToE
                   onChange={handleChange}
                   className="w-full px-2 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm bg-white"
                 >
-                  {isGrocery ? (
+                  {isBookshop ? (
+                    <>
+                      <option value="Book">Book (CR/අභ්‍යාස පොත්)</option>
+                      <option value="Piece">Piece / Item (පෑන්/උපකරණ)</option>
+                      <option value="Pack">Pack / Packet (පැකට්)</option>
+                      <option value="Box">Box (පෙට්ටි)</option>
+                      <option value="Ream">Ream (කඩදාසි රීම්)</option>
+                      <option value="Bundle">Bundle (මිටි)</option>
+                      <option value="Set">Set (කට්ටල)</option>
+                      <option value="Roll">Roll (ටේප්/රෝල්)</option>
+                    </>
+                  ) : isGrocery ? (
                     <>
                       <option value="Pack">Pack / Packet (පැකට්)</option>
                       <option value="Bottle">Bottle / Tin / Can (බෝතල්/ටින්)</option>
@@ -319,7 +387,7 @@ export default function AddMedicineModal({ isOpen, onClose, onSaved, medicineToE
                 name="batch_no"
                 value={formData.batch_no}
                 onChange={handleChange}
-                placeholder="e.g. BT-9812 or GR-4521"
+                placeholder={isBookshop ? "e.g. BK-4012" : (isGrocery ? "e.g. GR-4521" : "e.g. BT-9812")}
                 required
                 className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm font-mono"
               />
@@ -364,7 +432,7 @@ export default function AddMedicineModal({ isOpen, onClose, onSaved, medicineToE
                   placeholder="0.00"
                   required
                   className={`w-full px-3 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm font-bold ${
-                    isGrocery ? 'text-amber-700' : 'text-indigo-700'
+                    isBookshop ? 'text-sky-700' : (isGrocery ? 'text-amber-700' : 'text-indigo-700')
                   }`}
                 />
               </div>
@@ -434,13 +502,13 @@ export default function AddMedicineModal({ isOpen, onClose, onSaved, medicineToE
                 name="rack_location"
                 value={formData.rack_location}
                 onChange={handleChange}
-                placeholder={isGrocery ? "e.g. Grocery Shelf 1, Cooler" : "e.g. Rack A-1, Fridge"}
+                placeholder={isBookshop ? "e.g. Book Rack A, Stationery Shelf" : (isGrocery ? "e.g. Grocery Shelf 1, Cooler" : "e.g. Rack A-1, Fridge")}
                 className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
               />
             </div>
 
             {/* Prescription Requirement (Only shown for medicines) */}
-            {!isGrocery && (
+            {!isGrocery && !isBookshop && (
               <div className="flex items-center mt-6">
                 <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700">
                   <input
@@ -470,17 +538,19 @@ export default function AddMedicineModal({ isOpen, onClose, onSaved, medicineToE
               type="submit"
               disabled={loading}
               className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-white text-xs sm:text-sm font-bold shadow-md transition-all active:scale-95 disabled:opacity-50 cursor-pointer ${
-                isGrocery 
-                  ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/30' 
-                  : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30'
+                isBookshop
+                  ? 'bg-sky-600 hover:bg-sky-700 shadow-sky-600/30'
+                  : (isGrocery 
+                      ? 'bg-amber-600 hover:bg-amber-700 shadow-amber-600/30' 
+                      : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-600/30')
               }`}
             >
               <Save className="w-4 h-4" />
               {loading 
                 ? 'Saving...' 
                 : (medicineToEdit 
-                    ? (isGrocery ? 'Update Grocery Item' : 'Update Medicine') 
-                    : (isGrocery ? 'Save Grocery Item (භාණ්ඩය සුරකින්න)' : 'Save Medicine (ඖෂධය සුරකින්න)'))}
+                    ? (isBookshop ? 'Update Book / Stationery' : (isGrocery ? 'Update Grocery Item' : 'Update Medicine')) 
+                    : (isBookshop ? 'Save Book / Stationery (සුරකින්න)' : (isGrocery ? 'Save Grocery Item (භාණ්ඩය සුරකින්න)' : 'Save Medicine (ඖෂධය සුරකින්න)')))}
             </button>
           </div>
         </form>

@@ -210,6 +210,11 @@ async function seedServerlessDB() {
     } else {
       await User.updateOne({ username: 'admin', name: 'Dr. Kasun Perera' }, { $set: { name: 'Pharmacist (Admin)' } });
     }
+
+    const bookCat = await Category.findOne({ name: 'Bookshop & Stationery' });
+    if (!bookCat) {
+      await Category.create({ name: 'Bookshop & Stationery', description: 'Books, exercise books, pens, stationery and office supplies' });
+    }
   } catch (e) {
     console.warn('Seed error:', e.message);
   }

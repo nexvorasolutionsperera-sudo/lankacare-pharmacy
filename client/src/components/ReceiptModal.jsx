@@ -73,10 +73,10 @@ export default function ReceiptModal({ sale, onClose }) {
               Aaush pharmacy
             </h2>
             <p className="text-[11px] font-sans font-black text-sky-800 tracking-wider">
-              GROCERY & HEALTH MEDI CARE
+              GROCERY, BOOKSHOP & HEALTH MEDI CARE
             </p>
             <p className="text-[10px] text-slate-500 font-sans italic">
-              "Your Trusted Source for Wellness"
+              "Your Trusted Source for Wellness, Books & Essentials"
             </p>
             <p className="text-[10px] text-slate-500 font-sans mt-0.5">
               142, Main Street, Sri Lanka • Tel: 011-2925840

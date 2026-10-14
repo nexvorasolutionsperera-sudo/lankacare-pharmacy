@@ -59,10 +59,10 @@ export default function LoginPage({ onLoginSuccess }) {
           </div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Aaush pharmacy</h1>
           <p className="text-xs font-black text-sky-600 uppercase tracking-widest mt-1">
-            GROCERY & HEALTH MEDI CARE
+            GROCERY, BOOKSHOP & HEALTH MEDI CARE
           </p>
           <p className="text-[11px] text-slate-500 font-medium mt-0.5">
-            Your Trusted Source for Wellness
+            Your Trusted Source for Wellness, Books & Essentials
           </p>
         </div>
 

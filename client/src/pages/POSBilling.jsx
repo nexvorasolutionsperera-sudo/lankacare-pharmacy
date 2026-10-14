@@ -322,7 +322,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="ඖෂධ හෝ Grocery භාණ්ඩ සොයන්න (Search Medicine, Grocery, Barcode)..."
+                placeholder="ඖෂධ, Grocery හෝ පොත්පත් / ස්ටේෂනරි සොයන්න (Search Medicine, Grocery, Books, Barcode)..."
                 className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-slate-800 dark:text-white transition-all placeholder:text-slate-400"
               />
             </div>
@@ -359,17 +359,19 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
           {filteredMedicines.length === 0 ? (
             <div className="col-span-2 py-16 text-center bg-white/50 dark:bg-slate-900/50 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800">
               <AlertCircle className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
-              <p className="text-sm font-bold text-slate-500">ගැලපෙන ඖෂධ කිසිවක් හමු නොවීය</p>
-              <p className="text-xs text-slate-400">No medicines found matching "{searchTerm}"</p>
+              <p className="text-sm font-bold text-slate-500">ගැලපෙන භාණ්ඩ කිසිවක් හමු නොවීය</p>
+              <p className="text-xs text-slate-400">No items found matching "{searchTerm}"</p>
             </div>
           ) : (
             filteredMedicines.map((med) => {
               const isOut = (med.stock_quantity || 0) <= 0;
               const isLow = !isOut && (med.stock_quantity || 0) <= (med.reorder_level || med.min_stock_alert || 10);
               const price = Number(med.selling_price || 0);
-              const isG = med.category === 'Grocery & Essentials' || 
+              const isB = (med.category && (med.category.includes('Book') || med.category.includes('Stationery'))) ||
+                          med.form === 'Book' || med.form === 'Ream' || med.batch_no?.startsWith('BK-');
+              const isG = !isB && (med.category === 'Grocery & Essentials' || 
                           med.category === 'Personal Care & Hygiene' ||
-                          ['Pack', 'Bottle', 'Bar', 'Box', 'Piece'].includes(med.form);
+                          ['Pack', 'Bottle', 'Bar', 'Box', 'Piece'].includes(med.form));
 
               return (
                 <div
@@ -378,12 +380,20 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                   className={`p-4 rounded-3xl border transition-all select-none cursor-pointer group relative overflow-hidden ${
                     isOut 
                       ? 'bg-slate-100/70 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 opacity-60 cursor-not-allowed' 
-                      : 'bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-500/10 active:scale-[0.98]'
+                      : `bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 ${
+                          isB 
+                            ? 'hover:border-sky-500 hover:shadow-lg hover:shadow-sky-500/10' 
+                            : isG 
+                              ? 'hover:border-amber-500 hover:shadow-lg hover:shadow-amber-500/10' 
+                              : 'hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-500/10'
+                        } active:scale-[0.98]`
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-extrabold text-slate-900 dark:text-white text-sm leading-tight group-hover:text-indigo-600 transition-colors truncate">
+                      <h4 className={`font-extrabold text-slate-900 dark:text-white text-sm leading-tight transition-colors truncate ${
+                        isB ? 'group-hover:text-sky-600' : (isG ? 'group-hover:text-amber-600' : 'group-hover:text-indigo-600')
+                      }`}>
                         {med.name}
                       </h4>
                       <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
@@ -391,11 +401,13 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                       </p>
                     </div>
                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0 ${
-                      isG 
-                        ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300' 
-                        : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300'
+                      isB 
+                        ? 'bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300' 
+                        : (isG 
+                            ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300' 
+                            : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300')
                     }`}>
-                      {med.category || (isG ? 'Grocery' : 'Medicine')}
+                      {med.category || (isB ? 'Bookshop' : (isG ? 'Grocery' : 'Medicine'))}
                     </span>
                   </div>
 
@@ -418,7 +430,9 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                         </span>
                       ) : (
                         <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                          Stock: <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">{med.stock_quantity}</span>
+                          Stock: <span className={`${
+                            isB ? 'text-sky-600 dark:text-sky-400' : (isG ? 'text-amber-600 dark:text-amber-400' : 'text-indigo-600 dark:text-indigo-400')
+                          } font-extrabold`}>{med.stock_quantity}</span>
                         </span>
                       )}
                     </div>

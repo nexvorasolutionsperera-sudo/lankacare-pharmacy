@@ -59,14 +59,14 @@ export default function Logo({ size = 'md', showText = true, lightText = false }
         <div className="text-left leading-tight">
           <div className="flex items-center gap-1.5">
             <span className={`font-black tracking-tight ${textSizes[size] || textSizes.md} ${lightText ? 'text-white' : 'text-slate-900 dark:text-white'}`}>
-              LANKA<span className="text-emerald-500">CARE</span>
+              Aaush <span className="text-sky-500">pharmacy</span>
             </span>
-            <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-sm bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+            <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-sm bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300">
               Rx
             </span>
           </div>
-          <p className={`text-[10px] font-semibold tracking-wider uppercase ${lightText ? 'text-emerald-200' : 'text-slate-500 dark:text-slate-400'}`}>
-            Pharmacy & Healthcare
+          <p className={`text-[9px] font-extrabold tracking-wider uppercase ${lightText ? 'text-sky-200' : 'text-slate-500 dark:text-slate-400'}`}>
+            Grocery, Bookshop & Health Medi Care
           </p>
         </div>
       )}

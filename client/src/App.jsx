@@ -113,6 +113,12 @@ export default function App() {
     setIsAddMedOpen(true);
   };
 
+  const handleOpenAddBookshop = () => {
+    setMedicineToEdit(null);
+    setAddModalType('bookshop');
+    setIsAddMedOpen(true);
+  };
+
   const handleEditMedicine = (med) => {
     setMedicineToEdit(med);
     setIsAddMedOpen(true);
@@ -165,6 +171,7 @@ export default function App() {
               setActiveTab={setActiveTab}
               onOpenAddMed={handleOpenAddMed}
               onOpenAddGrocery={handleOpenAddGrocery}
+              onOpenAddBookshop={handleOpenAddBookshop}
               onOpenGRN={() => setIsGRNOpen(true)}
               t={t}
             />
@@ -188,6 +195,7 @@ export default function App() {
               onRefresh={loadAllData}
               onOpenAddMed={handleOpenAddMed}
               onOpenAddGrocery={handleOpenAddGrocery}
+              onOpenAddBookshop={handleOpenAddBookshop}
               onEditMedicine={handleEditMedicine}
               t={t}
             />

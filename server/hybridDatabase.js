@@ -266,6 +266,73 @@ async function mirrorMongoToSQLite() {
   }
 }
 
+async function seedBookshopDefaults() {
+  try {
+    const bookCategoryName = 'Bookshop & Stationery';
+    
+    // SQLite category check
+    try {
+      const existingCat = sqliteDb.prepare('SELECT id FROM categories WHERE name = ?').get(bookCategoryName);
+      if (!existingCat) {
+        sqliteDb.prepare('INSERT INTO categories (name, description) VALUES (?, ?)').run(bookCategoryName, 'Books, exercise books, pens, stationery and office supplies');
+      }
+    } catch (e) {}
+
+    // MongoDB category check
+    if (currentMode === 'online') {
+      try {
+        const found = await Category.findOne({ name: bookCategoryName });
+        if (!found) {
+          await Category.create({ name: bookCategoryName, description: 'Books, exercise books, pens, stationery and office supplies' });
+        }
+      } catch (e) {}
+    }
+
+    // Check if any bookshop items already exist
+    const sampleBook = currentMode === 'online'
+      ? await Medicine.findOne({ category: bookCategoryName })
+      : sqliteDb.prepare('SELECT id FROM medicines WHERE category_id IN (SELECT id FROM categories WHERE name = ?)').get(bookCategoryName);
+
+    if (!sampleBook) {
+      console.log('📚 Seeding Bookshop & Stationery inventory...');
+      const starterItems = [
+        { name: 'Atlas CR Book 80 Pages (Single Ruled)', generic_name: 'Atlas Stationery', dosage: '80 Pages', form: 'Book', cost_price: 110, selling_price: 140, stock_quantity: 50, reorder_level: 10, expiry_date: '2099-12-31', batch_number: 'BK-0801', rack_location: 'Book Rack A' },
+        { name: 'Atlas CR Book 120 Pages (Single Ruled)', generic_name: 'Atlas Stationery', dosage: '120 Pages', form: 'Book', cost_price: 155, selling_price: 190, stock_quantity: 45, reorder_level: 10, expiry_date: '2099-12-31', batch_number: 'BK-1201', rack_location: 'Book Rack A' },
+        { name: 'Atlas CR Book 160 Pages (Single Ruled)', generic_name: 'Atlas Stationery', dosage: '160 Pages', form: 'Book', cost_price: 195, selling_price: 240, stock_quantity: 35, reorder_level: 10, expiry_date: '2099-12-31', batch_number: 'BK-1601', rack_location: 'Book Rack A' },
+        { name: 'Atlas CR Book 200 Pages (Single Ruled)', generic_name: 'Atlas Stationery', dosage: '200 Pages', form: 'Book', cost_price: 240, selling_price: 290, stock_quantity: 30, reorder_level: 10, expiry_date: '2099-12-31', batch_number: 'BK-2001', rack_location: 'Book Rack A' },
+        { name: 'Atlas Chooty Blue Ballpoint Pen', generic_name: 'Atlas Ballpoint', dosage: 'Blue Ink 0.7mm', form: 'Piece', cost_price: 22, selling_price: 30, stock_quantity: 120, reorder_level: 20, expiry_date: '2099-12-31', batch_number: 'PEN-01', rack_location: 'Pen Display 1' },
+        { name: 'Atlas Chooty Black Ballpoint Pen', generic_name: 'Atlas Ballpoint', dosage: 'Black Ink 0.7mm', form: 'Piece', cost_price: 22, selling_price: 30, stock_quantity: 80, reorder_level: 20, expiry_date: '2099-12-31', batch_number: 'PEN-02', rack_location: 'Pen Display 1' },
+        { name: 'Double A A4 Copier Paper 80GSM (Ream 500s)', generic_name: 'Double A Paper', dosage: '500 Sheets A4', form: 'Pack', cost_price: 1350, selling_price: 1650, stock_quantity: 15, reorder_level: 5, expiry_date: '2099-12-31', batch_number: 'PPR-80', rack_location: 'Paper Storage' },
+        { name: 'Nataraj 2B Pencils Pack (10 Pcs)', generic_name: 'Nataraj Pencil', dosage: '10 Pcs Box', form: 'Pack', cost_price: 180, selling_price: 240, stock_quantity: 25, reorder_level: 5, expiry_date: '2099-12-31', batch_number: 'PCL-10', rack_location: 'Stationery Stand' },
+        { name: 'Atlas Mathematical Geometry Box', generic_name: 'Atlas School', dosage: 'Full Math Set', form: 'Box', cost_price: 450, selling_price: 580, stock_quantity: 20, reorder_level: 5, expiry_date: '2099-12-31', batch_number: 'GEO-01', rack_location: 'School Stand' },
+        { name: 'Deli 30cm Clear Plastic Ruler', generic_name: 'Deli Ruler', dosage: '12 Inch / 30cm', form: 'Piece', cost_price: 35, selling_price: 50, stock_quantity: 60, reorder_level: 10, expiry_date: '2099-12-31', batch_number: 'RUL-30', rack_location: 'Stationery Stand' },
+        { name: 'Pelikan Dust-Free Large Eraser', generic_name: 'Pelikan Germany', dosage: 'White Eraser', form: 'Piece', cost_price: 30, selling_price: 45, stock_quantity: 80, reorder_level: 15, expiry_date: '2099-12-31', batch_number: 'ERS-01', rack_location: 'Stationery Stand' },
+        { name: 'Atlas 2-Ring Arch Box File', generic_name: 'Atlas Office', dosage: 'F/C Size File', form: 'Piece', cost_price: 320, selling_price: 420, stock_quantity: 25, reorder_level: 5, expiry_date: '2099-12-31', batch_number: 'FIL-01', rack_location: 'File Rack' }
+      ];
+
+      for (const item of starterItems) {
+        if (currentMode === 'online') {
+          const created = await Medicine.create({
+            ...item,
+            category: bookCategoryName,
+            supplier_name: 'Atlas Axillia Co.'
+          });
+          syncMedicineToSQLite(created.toObject());
+        } else {
+          syncMedicineToSQLite({
+            ...item,
+            category: bookCategoryName,
+            supplier_name: 'Atlas Axillia Co.'
+          });
+        }
+      }
+      console.log(`✅ Seeded ${starterItems.length} Bookshop & Stationery items!`);
+    }
+  } catch (err) {
+    console.warn('⚠️ Bookshop seed notice:', err.message);
+  }
+}
+
 // ==================== INITIALIZATION ====================
 
 export async function initHybridDatabase() {
@@ -286,11 +353,14 @@ export async function initHybridDatabase() {
     currentMode = 'online';
     console.log('🟢 SYSTEM RUNNING IN: [ONLINE CLOUD MODE] (MongoDB Atlas)');
     // Background mirror into SQLite so offline is always 100% up-to-date!
-    mirrorMongoToSQLite();
+    await mirrorMongoToSQLite();
   } else {
     currentMode = 'offline';
     console.log('🟠 SYSTEM RUNNING IN: [OFFLINE STANDALONE MODE] (Local SQLite)');
   }
+
+  // Seed bookshop defaults if none exist
+  await seedBookshopDefaults();
 
   return currentMode;
 }
