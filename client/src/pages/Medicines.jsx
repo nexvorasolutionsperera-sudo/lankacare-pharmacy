@@ -75,10 +75,10 @@ export default function Medicines({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900/90 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div>
           <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
-            {t?.inventoryTitle || 'Medicine Inventory Management'}
+            {t?.inventoryTitle || 'Medicines & Grocery Products'}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Total {medicines.length} {t?.totalRegisteredMeds || 'registered medicines in catalog'}
+            Total {medicines.length} registered items (Medicines, Health & Grocery)
           </p>
         </div>
 
@@ -96,7 +96,7 @@ export default function Medicines({
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm shadow-md transition-all active:scale-95 cursor-pointer"
           >
             <Plus className="w-4 h-4" />
-            {t?.addNewMedicine || 'Add New Medicine'}
+            + Add Medicine / Grocery Item
           </button>
         </div>
       </div>

@@ -118,9 +118,9 @@ export default function AddMedicineModal({ isOpen, onClose, onSaved, medicineToE
             </div>
             <div>
               <h2 className="text-lg font-bold text-slate-800">
-                {medicineToEdit ? 'බෙහෙත් තොරතුරු වෙනස් කිරීම (Edit Medicine)' : 'නව ඖෂධයක් එකතු කිරීම (Add New Medicine)'}
+                {medicineToEdit ? 'භාණ්ඩ / බෙහෙත් තොරතුරු වෙනස් කිරීම (Edit Product / Medicine)' : 'නව ඖෂධයක් හෝ Grocery භාණ්ඩයක් එකතු කිරීම (Add Medicine / Grocery)'}
               </h2>
-              <p className="text-xs text-slate-500">Fill in the details to update inventory stock</p>
+              <p className="text-xs text-slate-500">Add medicines, healthcare or grocery products to inventory stock</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors">
@@ -191,21 +191,23 @@ export default function AddMedicineModal({ isOpen, onClose, onSaved, medicineToE
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Form (වර්ගය)</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">Form / Type (වර්ගය)</label>
                 <select
                   name="form"
                   value={formData.form}
                   onChange={handleChange}
                   className="w-full px-2 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm"
                 >
-                  <option value="Tablet">Tablet</option>
-                  <option value="Capsule">Capsule</option>
-                  <option value="Syrup">Syrup</option>
-                  <option value="Injection">Injection</option>
-                  <option value="Inhaler">Inhaler</option>
-                  <option value="Ointment">Ointment/Cream</option>
+                  <option value="Tablet">Tablet (පෙති)</option>
+                  <option value="Capsule">Capsule (කරල්)</option>
+                  <option value="Syrup">Syrup (පැණි)</option>
+                  <option value="Pack">Pack / Packet (පැකට්)</option>
+                  <option value="Bottle">Bottle / Tin (බෝතල්/ටින්)</option>
+                  <option value="Bar">Bar / Piece (කෑලි/සබන්)</option>
+                  <option value="Box">Box / Carton (පෙට්ටි)</option>
+                  <option value="Ointment">Ointment / Cream</option>
                   <option value="Drops">Eye/Ear Drops</option>
-                  <option value="Medical Device">Device</option>
+                  <option value="Device">Medical / Grocery Item</option>
                 </select>
               </div>
             </div>

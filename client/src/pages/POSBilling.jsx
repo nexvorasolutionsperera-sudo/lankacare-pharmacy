@@ -281,7 +281,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="ඖෂධ නම, Generic නම හෝ කේතය සොයන්න (Search Medicine)..."
+                placeholder="ඖෂධ හෝ Grocery භාණ්ඩ සොයන්න (Search Medicine, Grocery, Barcode)..."
                 className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-semibold text-slate-800 dark:text-white transition-all placeholder:text-slate-400"
               />
             </div>
