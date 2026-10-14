@@ -90,12 +90,6 @@ export default function Navbar({
                 <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Pharmacy System</div>
               </div>
             </div>
-
-            {/* Offline / Cloud Status Pill */}
-            <div className="hidden md:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-[11px] font-bold text-slate-600 dark:text-slate-300">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              <span>Hybrid Mode (Cloud + Offline Ready)</span>
-            </div>
           </div>
 
           {/* Navigation Links */}

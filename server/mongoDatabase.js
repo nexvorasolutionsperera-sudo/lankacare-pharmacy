@@ -24,14 +24,17 @@ export async function connectMongoDB() {
 
 async function seedMongoDatabase() {
   try {
-    // 1. Seed Users if none exist
+    // 1. Seed or Update Users
     const userCount = await User.countDocuments();
     if (userCount === 0) {
       console.log('🌱 Seeding initial users...');
       await User.create([
-        { username: 'admin', password: 'admin123', name: 'Dr. Kasun Perera', role: 'admin' },
-        { username: 'cashier', password: 'cashier123', name: 'Nimali Silva', role: 'cashier' }
+        { username: 'admin', password: 'admin123', name: 'Pharmacist (Admin)', role: 'admin' },
+        { username: 'cashier', password: 'cashier123', name: 'Counter Cashier', role: 'cashier' }
       ]);
+    } else {
+      // Ensure default admin name is updated if it was previously Dr. Kasun Perera
+      await User.updateOne({ username: 'admin', name: 'Dr. Kasun Perera' }, { $set: { name: 'Pharmacist (Admin)' } });
     }
 
     // 2. Seed Categories

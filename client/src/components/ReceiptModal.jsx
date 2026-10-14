@@ -180,18 +180,39 @@ export default function ReceiptModal({ sale, onClose }) {
               <span className="text-emerald-700 text-lg font-black">{formatCurrency(totalAmount)}</span>
             </div>
 
-            {/* CASH & CHANGE */}
-            <div className="flex justify-between text-slate-700 pt-1.5 text-[11px]">
-              <span>Cash Tendered (දුන් මුදල):</span>
-              <span className="font-semibold">{formatCurrency(paidAmount)}</span>
-            </div>
+            {/* PAYMENT DETAILS (CARD VS CASH) */}
+            {sale.payment_method === 'Card' ? (
+              <div className="pt-2">
+                <div className="p-2 rounded-xl bg-emerald-50 border border-emerald-200/80 text-center">
+                  <div className="flex items-center justify-center gap-1.5 text-xs font-black text-emerald-800">
+                    <CheckCircle className="w-4 h-4 text-emerald-600" />
+                    <span>PAID BY CARD (කාඩ්පතින් ගෙවන ලදී)</span>
+                  </div>
+                  {sale.card_last4 && (
+                    <p className="text-[10px] font-mono text-slate-600 font-bold mt-0.5">
+                      Card: **** **** **** {sale.card_last4}
+                    </p>
+                  )}
+                  <p className="text-[10px] font-bold text-emerald-700 mt-0.5">
+                    Amount: {formatCurrency(totalAmount)} • Approved ✓
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex justify-between text-slate-700 pt-1.5 text-[11px]">
+                  <span>Cash Tendered (දුන් මුදල):</span>
+                  <span className="font-semibold">{formatCurrency(paidAmount)}</span>
+                </div>
 
-            <div className="flex justify-between items-center font-black text-slate-900 pt-1 text-xs">
-              <span className="text-slate-700">Change Due (ඉතිරි මුදල):</span>
-              <span className="text-emerald-800 text-sm font-black bg-emerald-50 px-2 py-0.5 rounded">
-                {formatCurrency(changeAmount)}
-              </span>
-            </div>
+                <div className="flex justify-between items-center font-black text-slate-900 pt-1 text-xs">
+                  <span className="text-slate-700">Change Due (ඉතිරි මුදල):</span>
+                  <span className="text-emerald-800 text-sm font-black bg-emerald-50 px-2 py-0.5 rounded">
+                    {formatCurrency(changeAmount)}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* You Saved Badge (if discount given) */}

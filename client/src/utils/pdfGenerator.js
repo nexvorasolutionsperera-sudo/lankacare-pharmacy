@@ -123,15 +123,31 @@ export const pdfGenerator = {
     doc.text(fmtLKR(totalAmount), 76, currY, { align: 'right' });
 
     currY += 4;
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7.5);
-    doc.setTextColor(60, 60, 60);
-    doc.text('Tendered:', 40, currY);
-    doc.text(fmtLKR(paidAmount), 76, currY, { align: 'right' });
+    if (sale.payment_method === 'Card') {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(16, 120, 80);
+      doc.text('Payment Mode:', 40, currY);
+      doc.text('CARD (APPROVED)', 76, currY, { align: 'right' });
+      if (sale.card_last4) {
+        currY += 3.5;
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(80, 80, 80);
+        doc.text('Card Number:', 40, currY);
+        doc.text(`**** ${sale.card_last4}`, 76, currY, { align: 'right' });
+      }
+    } else {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7.5);
+      doc.setTextColor(60, 60, 60);
+      doc.text('Tendered:', 40, currY);
+      doc.text(fmtLKR(paidAmount), 76, currY, { align: 'right' });
 
-    currY += 3.5;
-    doc.text('Change:', 40, currY);
-    doc.text(fmtLKR(changeAmount), 76, currY, { align: 'right' });
+      currY += 3.5;
+      doc.text('Change:', 40, currY);
+      doc.text(fmtLKR(changeAmount), 76, currY, { align: 'right' });
+    }
 
     // Footer blessing
     currY += 7;

@@ -33,6 +33,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
   const [discountPercent, setDiscountPercent] = useState(0);
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [cashTendered, setCashTendered] = useState('');
+  const [cardLast4, setCardLast4] = useState('');
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
   const [selectedDoctorId, setSelectedDoctorId] = useState('');
   const [customCustomerName, setCustomCustomerName] = useState('');
@@ -187,6 +188,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
     setCart([]);
     setError('');
     setCashTendered('');
+    setCardLast4('');
     setDiscountPercent(0);
   };
 
@@ -201,8 +203,8 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
   const totalAllDiscounts = totalItemDiscounts + extraBillDiscount;
 
   const grandTotal = Math.max(0, rawSubtotal - totalAllDiscounts);
-  const tendered = Number(cashTendered) || 0;
-  const changeDue = tendered >= grandTotal ? (tendered - grandTotal) : 0;
+  const tendered = paymentMethod === 'Card' ? grandTotal : (Number(cashTendered) || 0);
+  const changeDue = paymentMethod === 'Card' ? 0 : (tendered >= grandTotal ? (tendered - grandTotal) : 0);
 
   // Quick Tender buttons
   const quickTenderAmounts = [100, 500, 1000, 2000, 5000];
@@ -237,9 +239,10 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
         subtotal: Number(rawSubtotal) || 0,
         discount: Number(totalAllDiscounts) || 0,
         total_amount: Number(grandTotal) || 0,
-        paid_amount: tendered > 0 ? tendered : grandTotal,
-        change_amount: changeDue,
+        paid_amount: paymentMethod === 'Card' ? grandTotal : (tendered > 0 ? tendered : grandTotal),
+        change_amount: paymentMethod === 'Card' ? 0 : changeDue,
         payment_method: paymentMethod,
+        card_last4: paymentMethod === 'Card' ? cardLast4 : null,
         items: cart.map(item => ({
           medicine_id: item.medicine_id,
           medicine_name: item.medicine_name,
@@ -603,6 +606,37 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
               </button>
             ))}
           </div>
+
+          {/* Card Payment Info Box (Card Mode) */}
+          {paymentMethod === 'Card' && (
+            <div className="p-3 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 border border-emerald-200 dark:border-emerald-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                  <CreditCard className="w-4 h-4 text-emerald-600" />
+                  Card Payment (කාඩ්පත් ගෙවීම)
+                </span>
+                <span className="text-[11px] font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-lg">
+                  Exact: {formatCurrency(grandTotal)}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                  Card Last 4 Digits (අවසාන අංක 4):
+                </span>
+                <input
+                  type="text"
+                  maxLength="4"
+                  placeholder="e.g. 4242 (Optional)"
+                  value={cardLast4}
+                  onChange={(e) => setCardLast4(e.target.value.replace(/\D/g, ''))}
+                  className="w-32 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono font-bold text-center text-slate-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                />
+              </div>
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 italic">
+                * ස්වයංක්‍රීයව ශුද්ධ මුදලට සමාන මුදලක් ගෙවූ බව සටහන් වේ. ඉතිරි මුදලක් ගණනය නොවේ.
+              </p>
+            </div>
+          )}
 
           {/* Cash Tender Input & Quick Amounts (Cash Mode Only) */}
           {paymentMethod === 'Cash' && (
