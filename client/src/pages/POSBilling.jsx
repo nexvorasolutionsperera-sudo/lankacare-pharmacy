@@ -618,7 +618,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                   <div className="flex items-end justify-between mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
                     <div>
                       <span className="text-[10px] text-slate-400 font-semibold block">Price (මිල)</span>
-                      <span className="text-sm font-black text-slate-900 dark:text-white">
+                      <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
                         {formatCurrency(price)}
                       </span>
                     </div>
@@ -636,7 +636,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                         <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
                           Stock: <span className={`${
                             isB ? 'text-sky-600 dark:text-sky-400' : (isG ? 'text-amber-600 dark:text-amber-400' : 'text-indigo-600 dark:text-indigo-400')
-                          } font-extrabold`}>{med.stock_quantity}</span>
+                          } font-extrabold font-mono`}>{med.stock_quantity}</span>
                         </span>
                       )}
                     </div>
@@ -650,7 +650,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
       </div>
 
       {/* ==================== RIGHT 5 COLS: Modern Smart Cart ==================== */}
-      <div className="lg:col-span-5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xl p-5 flex flex-col sticky top-4">
+      <div className="lg:col-span-5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xl p-5 flex flex-col sticky top-20">
         
         {/* Cart Header */}
         <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800">

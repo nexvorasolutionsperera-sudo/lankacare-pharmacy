@@ -348,14 +348,14 @@ export default function Medicines({
 
                       {/* Buy price (Admin only) */}
                       {!isCashier && (
-                        <td className="p-3.5 text-slate-600 dark:text-slate-300 font-medium">
+                        <td className="p-3.5 text-slate-700 dark:text-slate-300 font-mono font-bold">
                           {formatCurrency(med.cost_price)}
                         </td>
                       )}
 
                       {/* Sell price & margin */}
                       <td className="p-3.5">
-                        <span className={`font-bold ${
+                        <span className={`font-mono font-black text-xs sm:text-sm ${
                           isB 
                             ? 'text-sky-600 dark:text-sky-400' 
                             : (isG ? 'text-amber-600 dark:text-amber-400' : 'text-indigo-600 dark:text-indigo-400')
@@ -363,20 +363,22 @@ export default function Medicines({
                           {formatCurrency(med.selling_price)}
                         </span>
                         {!isCashier && (
-                          <div className="text-[10px] text-slate-400">+{margin}% margin</div>
+                          <div className="text-[10px] text-slate-400 font-mono">+{margin}% margin</div>
                         )}
                       </td>
 
                       {/* Stock Level */}
                       <td className="p-3.5 text-center">
-                        <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold ${
+                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-black shadow-xs ${
                           isOut 
-                            ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300' 
+                            ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 ring-1 ring-rose-300 dark:ring-rose-800' 
                             : isLow 
-                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300' 
-                              : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 ring-1 ring-amber-300 dark:ring-amber-800' 
+                              : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 ring-1 ring-emerald-300 dark:ring-emerald-800'
                         }`}>
-                          {isOut && <AlertTriangle className="w-3 h-3" />}
+                          <span className={`w-1.5 h-1.5 rounded-full ${
+                            isOut ? 'bg-rose-500' : isLow ? 'bg-amber-500' : 'bg-emerald-500'
+                          }`}></span>
                           {med.stock_quantity}
                         </span>
                         <div className="text-[10px] text-slate-400 mt-0.5">Min: {med.min_stock_alert}</div>

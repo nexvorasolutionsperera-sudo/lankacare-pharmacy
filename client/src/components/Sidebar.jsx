@@ -32,10 +32,15 @@ export default function Sidebar({
   setTheme,
   bgTheme,
   setBgTheme,
+  isMobileOpen: externalMobileOpen,
+  setIsMobileOpen: setExternalMobileOpen,
   t
 }) {
-  const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [internalMobileOpen, setInternalMobileOpen] = useState(false);
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
+
+  const isMobileOpen = externalMobileOpen !== undefined ? externalMobileOpen : internalMobileOpen;
+  const setIsMobileOpen = setExternalMobileOpen || setInternalMobileOpen;
 
   const isCashier = (currentUser?.role || '').toLowerCase() === 'cashier';
   const lowStockCount = stats?.lowStockCount || 0;
@@ -122,38 +127,46 @@ export default function Sidebar({
         </div>
 
         {/* Navigation Items */}
-        <nav className="space-y-1.5">
-          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400 px-3 py-1">
-            Menu Navigation
-          </p>
-
-          {navItems.map((item) => {
+        <nav className="space-y-1">
+          {navItems.map((item, idx) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
+            const prevItem = navItems[idx - 1];
+            const showSection = !prevItem || prevItem.section !== item.section;
+
             return (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                  isActive
-                    ? item.highlight 
-                      ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-indigo-600/40 ring-1 ring-white/20' 
-                      : 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                    : item.highlight
-                      ? 'bg-indigo-950/80 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-900/90 hover:text-white'
-                      : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon className="w-4 h-4 shrink-0" />
-                  <span className="truncate">{item.label}</span>
-                </div>
-                {item.badge !== null && item.badge > 0 && (
-                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold text-white shadow-xs ${item.badgeColor}`}>
-                    {item.badge}
-                  </span>
+              <React.Fragment key={item.id}>
+                {showSection && (
+                  <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-3 pt-2.5 pb-1">
+                    {item.section}
+                  </p>
                 )}
-              </button>
+                <button
+                  onClick={() => handleNavClick(item.id)}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all cursor-pointer relative group ${
+                    isActive
+                      ? item.highlight 
+                        ? 'bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 text-white shadow-lg shadow-indigo-600/40 ring-1 ring-white/20' 
+                        : 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
+                      : item.highlight
+                        ? 'bg-indigo-950/80 border border-indigo-500/40 text-indigo-300 hover:bg-indigo-900/90 hover:text-white'
+                        : 'text-slate-300 hover:text-white hover:bg-slate-800/80'
+                  }`}
+                >
+                  {isActive && (
+                    <span className="absolute left-0 top-2 bottom-2 w-1 bg-sky-400 rounded-r-full" />
+                  )}
+                  <div className="flex items-center gap-3">
+                    <Icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-sky-400'}`} />
+                    <span className="truncate">{item.label}</span>
+                  </div>
+                  {item.badge !== null && item.badge > 0 && (
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-black text-white shadow-xs ${item.badgeColor}`}>
+                      {item.badge}
+                    </span>
+                  )}
+                </button>
+              </React.Fragment>
             );
           })}
         </nav>
@@ -273,35 +286,6 @@ export default function Sidebar({
 
   return (
     <>
-      {/* Mobile Top Header */}
-      <header className="lg:hidden bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40 px-4 py-2.5 flex items-center justify-between print:hidden">
-        <div 
-          className="flex items-center gap-2.5 cursor-pointer"
-          onClick={() => setActiveTab(isCashier ? 'pos' : 'dashboard')}
-        >
-          <img 
-            src="/pharmacy-logo.png" 
-            alt="Aaush Pharmacy" 
-            className="h-9 w-auto object-contain rounded-lg ring-1 ring-slate-700"
-          />
-          <div>
-            <div className="text-xs font-black text-white leading-tight">
-              Aaush pharmacy
-            </div>
-            <div className="text-[8px] text-sky-400 font-extrabold uppercase tracking-wider">
-              GROCERY, BOOKSHOP & HEALTH MEDI CARE
-            </div>
-          </div>
-        </div>
-
-        <button
-          onClick={() => setIsMobileOpen(true)}
-          className="p-2 rounded-xl bg-slate-800 text-slate-200 hover:bg-slate-750 transition-colors cursor-pointer"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
-      </header>
-
       {/* Mobile Backdrop & Drawer */}
       {isMobileOpen && (
         <div className="fixed inset-0 z-50 lg:hidden flex">

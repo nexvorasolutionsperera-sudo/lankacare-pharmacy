@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from './components/Sidebar';
+import Header from './components/Header';
 import Dashboard from './pages/Dashboard';
 import POSBilling from './pages/POSBilling';
 import Medicines from './pages/Medicines';
@@ -54,6 +55,8 @@ export default function App() {
       setActiveTab('pos');
     }
   }, [currentUser, isCashier, activeTab]);
+
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [stats, setStats] = useState(null);
   const [medicines, setMedicines] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -182,11 +185,28 @@ export default function App() {
         setTheme={setTheme}
         bgTheme={bgTheme}
         setBgTheme={setBgTheme}
+        isMobileOpen={isMobileSidebarOpen}
+        setIsMobileOpen={setIsMobileSidebarOpen}
         t={t}
       />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-auto lg:h-screen lg:overflow-y-auto">
+        
+        {/* Top Header Navigation Bar */}
+        <Header 
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          stats={stats}
+          currentUser={currentUser}
+          theme={theme}
+          setTheme={setTheme}
+          lang={lang}
+          setLang={setLang}
+          onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
+          t={t}
+        />
+
         <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
           {!isCashier && activeTab === 'dashboard' && (
             <Dashboard
