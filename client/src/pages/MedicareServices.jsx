@@ -25,7 +25,7 @@ import { pdfGenerator } from '../utils/pdfGenerator';
 import AddMedicareOrderModal, { MEDICARE_CATALOG } from '../components/AddMedicareOrderModal';
 import MedicareTokenModal from '../components/MedicareTokenModal';
 
-export default function MedicareServices({ customers = [], doctors = [], t = {} }) {
+export default function MedicareServices({ customers = [], doctors = [], t = {}, currentUser, isCashier = false }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -437,14 +437,16 @@ export default function MedicareServices({ customers = [], doctors = [], t = {} 
                             <Download className="w-3.5 h-3.5" />
                           </button>
 
-                          {/* Delete */}
-                          <button
-                            onClick={() => handleDeleteOrder(order.id)}
-                            title="Delete Order"
-                            className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-400 hover:text-rose-600 transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {/* Delete (Admin only) */}
+                          {!isCashier && (
+                            <button
+                              onClick={() => handleDeleteOrder(order.id)}
+                              title="Delete Order"
+                              className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-400 hover:text-rose-600 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
 
                         </div>
                       </td>

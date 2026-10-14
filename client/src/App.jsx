@@ -36,7 +36,24 @@ export default function App() {
   const [theme, setTheme] = useState(() => localStorage.getItem('pharmacy_theme') || 'light');
   const [bgTheme, setBgTheme] = useState(() => localStorage.getItem('pharmacy_bg_theme') || 'theme-mint');
 
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const isCashier = (currentUser?.role || '').toLowerCase() === 'cashier';
+
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const saved = localStorage.getItem('pharmacy_auth');
+      const user = saved ? JSON.parse(saved).user : null;
+      return (user?.role || '').toLowerCase() === 'cashier' ? 'pos' : 'dashboard';
+    } catch {
+      return 'dashboard';
+    }
+  });
+
+  // Role Guard: Automatically switch Cashier away from Admin-only screens
+  useEffect(() => {
+    if (isCashier && ['dashboard', 'dealers', 'alerts', 'reports'].includes(activeTab)) {
+      setActiveTab('pos');
+    }
+  }, [currentUser, isCashier, activeTab]);
   const [stats, setStats] = useState(null);
   const [medicines, setMedicines] = useState([]);
   const [categories, setCategories] = useState([]);
@@ -136,11 +153,17 @@ export default function App() {
     }
   };
 
+  const handleLoginSuccess = (user) => {
+    setCurrentUser(user);
+    const cashierCheck = (user?.role || '').toLowerCase() === 'cashier';
+    setActiveTab(cashierCheck ? 'pos' : 'dashboard');
+  };
+
   const t = translations[lang] || translations.en;
 
   // If not authenticated, render Login Page
   if (!currentUser) {
-    return <LoginPage onLoginSuccess={setCurrentUser} />;
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
   return (
@@ -165,7 +188,7 @@ export default function App() {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-auto lg:h-screen lg:overflow-y-auto">
         <main className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 lg:p-8">
-          {activeTab === 'dashboard' && (
+          {!isCashier && activeTab === 'dashboard' && (
             <Dashboard
               stats={stats}
               setActiveTab={setActiveTab}
@@ -182,6 +205,7 @@ export default function App() {
               medicines={medicines}
               customers={customers}
               doctors={doctors}
+              currentUser={currentUser}
               onRefreshData={loadAllData}
               t={t}
             />
@@ -192,6 +216,8 @@ export default function App() {
               medicines={medicines}
               categories={categories}
               suppliers={suppliers}
+              currentUser={currentUser}
+              isCashier={isCashier}
               onRefresh={loadAllData}
               onOpenAddMed={handleOpenAddMed}
               onOpenAddGrocery={handleOpenAddGrocery}
@@ -201,7 +227,7 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'dealers' && (
+          {!isCashier && activeTab === 'dealers' && (
             <Suppliers
               suppliers={suppliers}
               medicines={medicines}
@@ -212,7 +238,7 @@ export default function App() {
             />
           )}
 
-          {activeTab === 'alerts' && (
+          {!isCashier && activeTab === 'alerts' && (
             <Alerts
               medicines={medicines}
               onOpenGRN={() => setIsGRNOpen(true)}
@@ -225,6 +251,8 @@ export default function App() {
             <CustomersDoctors
               customers={customers}
               doctors={doctors}
+              currentUser={currentUser}
+              isCashier={isCashier}
               onRefresh={loadAllData}
               onOpenAddCustomer={() => setIsAddCustomerOpen(true)}
               onOpenAddDoctor={() => setIsAddDoctorOpen(true)}
@@ -236,17 +264,21 @@ export default function App() {
             <MedicareServices
               customers={customers}
               doctors={doctors}
+              currentUser={currentUser}
+              isCashier={isCashier}
               t={t}
             />
           )}
 
           {activeTab === 'reloads' && (
             <ReloadServices
+              currentUser={currentUser}
+              isCashier={isCashier}
               t={t}
             />
           )}
 
-          {activeTab === 'reports' && (
+          {!isCashier && activeTab === 'reports' && (
             <Reports t={t} />
           )}
         </main>

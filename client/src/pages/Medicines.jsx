@@ -22,6 +22,8 @@ export default function Medicines({
   medicines, 
   categories, 
   suppliers, 
+  currentUser,
+  isCashier = false,
   onRefresh, 
   onOpenAdd, 
   onOpenAddMed,
@@ -123,14 +125,18 @@ export default function Medicines({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900/90 p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div>
           <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">
-            {t?.inventoryTitle || 'Medicines, Grocery & Bookshop Inventory'}
+            {isCashier 
+              ? 'තොග සහ මිල පරීක්ෂාව (Stock & Price Check)' 
+              : (t?.inventoryTitle || 'Medicines, Grocery & Bookshop Inventory')}
           </h2>
           <p className="text-xs text-slate-500 dark:text-slate-400">
-            Total {medicines.length} registered items ({medicineCount} Medicines, {groceryCount} Grocery, {bookshopCount} Books & Stationery)
+            {isCashier 
+              ? `කවුන්ටර පරීක්ෂාව සඳහා භාණ්ඩ ${medicines.length} ක් ලියාපදිංචි කර ඇත (${medicineCount} Medicines, ${groceryCount} Grocery, ${bookshopCount} Books)`
+              : `Total ${medicines.length} registered items (${medicineCount} Medicines, ${groceryCount} Grocery, ${bookshopCount} Books & Stationery)`}
           </p>
         </div>
 
-        {/* Action Buttons: PDF + Separate Add Buttons */}
+        {/* Action Buttons: PDF + Separate Add Buttons (Add buttons hidden for Cashier) */}
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => pdfGenerator.generateInventoryPDF(medicines)}
@@ -140,32 +146,36 @@ export default function Medicines({
             <span>PDF</span>
           </button>
 
-          {/* Separate Add Medicine */}
-          <button
-            onClick={handleAddMedicineClick}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-600/30 transition-all active:scale-95 cursor-pointer"
-          >
-            <Pill className="w-4 h-4" />
-            <span>+ Add Medicine (ඖෂධ)</span>
-          </button>
+          {!isCashier && (
+            <>
+              {/* Separate Add Medicine */}
+              <button
+                onClick={handleAddMedicineClick}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-600/30 transition-all active:scale-95 cursor-pointer"
+              >
+                <Pill className="w-4 h-4" />
+                <span>+ Add Medicine (ඖෂධ)</span>
+              </button>
 
-          {/* Separate Add Grocery */}
-          <button
-            onClick={handleAddGroceryClick}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-amber-600/30 transition-all active:scale-95 cursor-pointer"
-          >
-            <ShoppingBag className="w-4 h-4" />
-            <span>+ Add Grocery (සිල්ලර)</span>
-          </button>
+              {/* Separate Add Grocery */}
+              <button
+                onClick={handleAddGroceryClick}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-amber-600/30 transition-all active:scale-95 cursor-pointer"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span>+ Add Grocery (සිල්ලර)</span>
+              </button>
 
-          {/* Separate Add Book / Stationery */}
-          <button
-            onClick={handleAddBookshopClick}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-sky-600/30 transition-all active:scale-95 cursor-pointer"
-          >
-            <BookOpen className="w-4 h-4" />
-            <span>+ Add Book / Stationery (පොත්පත්)</span>
-          </button>
+              {/* Separate Add Book / Stationery */}
+              <button
+                onClick={handleAddBookshopClick}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-sky-600/30 transition-all active:scale-95 cursor-pointer"
+              >
+                <BookOpen className="w-4 h-4" />
+                <span>+ Add Book / Stationery (පොත්පත්)</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
 
@@ -274,18 +284,18 @@ export default function Medicines({
                 <th className="p-3.5">Type & Item Name</th>
                 <th className="p-3.5">Category</th>
                 <th className="p-3.5">Batch / Shelf</th>
-                <th className="p-3.5">Cost (LKR)</th>
-                <th className="p-3.5">Sell (LKR)</th>
+                {!isCashier && <th className="p-3.5">Cost (LKR)</th>}
+                <th className="p-3.5">{isCashier ? 'Selling Price (LKR)' : 'Sell (LKR)'}</th>
                 <th className="p-3.5 text-center">Stock Level</th>
                 <th className="p-3.5">Expiry Date</th>
                 <th className="p-3.5">Supplier / Dealer</th>
-                <th className="p-3.5 text-right">Actions</th>
+                {!isCashier && <th className="p-3.5 text-right">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="p-8 text-center text-slate-400">
+                  <td colSpan={isCashier ? 7 : 9} className="p-8 text-center text-slate-400">
                     No items match the selected search/filters.
                   </td>
                 </tr>
@@ -336,10 +346,12 @@ export default function Medicines({
                         )}
                       </td>
 
-                      {/* Buy price */}
-                      <td className="p-3.5 text-slate-600 dark:text-slate-300 font-medium">
-                        {formatCurrency(med.cost_price)}
-                      </td>
+                      {/* Buy price (Admin only) */}
+                      {!isCashier && (
+                        <td className="p-3.5 text-slate-600 dark:text-slate-300 font-medium">
+                          {formatCurrency(med.cost_price)}
+                        </td>
+                      )}
 
                       {/* Sell price & margin */}
                       <td className="p-3.5">
@@ -350,7 +362,9 @@ export default function Medicines({
                         }`}>
                           {formatCurrency(med.selling_price)}
                         </span>
-                        <div className="text-[10px] text-slate-400">+{margin}% margin</div>
+                        {!isCashier && (
+                          <div className="text-[10px] text-slate-400">+{margin}% margin</div>
+                        )}
                       </td>
 
                       {/* Stock Level */}
@@ -395,24 +409,26 @@ export default function Medicines({
                         {med.supplier_name || '-'}
                       </td>
 
-                      {/* Actions */}
-                      <td className="p-3.5 text-right space-x-1">
-                        <button
-                          onClick={() => onEditMedicine(med)}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                          title="Edit item"
-                        >
-                          <Edit3 className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(med.id, med.name)}
-                          disabled={deletingId === med.id}
-                          className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-                          title="Delete item"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
+                      {/* Actions (Admin only) */}
+                      {!isCashier && (
+                        <td className="p-3.5 text-right space-x-1">
+                          <button
+                            onClick={() => onEditMedicine(med)}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                            title="Edit item"
+                          >
+                            <Edit3 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDelete(med.id, med.name)}
+                            disabled={deletingId === med.id}
+                            className="p-1.5 rounded-lg text-slate-500 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                            title="Delete item"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      )}
 
                     </tr>
                   );

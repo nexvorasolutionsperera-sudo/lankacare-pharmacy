@@ -37,15 +37,16 @@ export default function Sidebar({
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
 
+  const isCashier = (currentUser?.role || '').toLowerCase() === 'cashier';
   const lowStockCount = stats?.lowStockCount || 0;
   const expiringCount = (stats?.expiredCount || 0) + (stats?.expiringSoonCount || 0);
 
-  const navItems = [
-    { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard },
+  const allNavItems = [
+    { id: 'dashboard', label: t.dashboard, icon: LayoutDashboard, adminOnly: true },
     { id: 'pos', label: t.posBilling, icon: ShoppingCart, highlight: true },
     { 
       id: 'medicines', 
-      label: t.inventory || 'Medicines, Grocery & Books', 
+      label: isCashier ? 'ඖෂධ & භාණ්ඩ විස්තර (Stock Check)' : (t.inventory || 'Medicines, Grocery & Books'), 
       icon: Pill,
       badge: lowStockCount > 0 ? lowStockCount : null,
       badgeColor: 'bg-amber-500'
@@ -53,20 +54,24 @@ export default function Sidebar({
     { 
       id: 'dealers', 
       label: t.dealers, 
-      icon: Truck 
+      icon: Truck,
+      adminOnly: true
     },
     { 
       id: 'alerts', 
       label: t.alerts, 
       icon: AlertTriangle,
       badge: expiringCount > 0 ? expiringCount : null,
-      badgeColor: 'bg-rose-500'
+      badgeColor: 'bg-rose-500',
+      adminOnly: true
     },
     { id: 'customers', label: t.customersDocs, icon: Users },
     { id: 'medicare', label: t.medicareServices || 'Medicare & Lab Tests', icon: Activity },
     { id: 'reloads', label: t.reloadServices || 'Photocopy & Reload', icon: Smartphone },
-    { id: 'reports', label: t.reports, icon: BarChart3 }
+    { id: 'reports', label: t.reports, icon: BarChart3, adminOnly: true }
   ];
+
+  const navItems = isCashier ? allNavItems.filter(item => !item.adminOnly) : allNavItems;
 
   const bgThemes = [
     { id: 'theme-mint', name: t.themeMint, color: 'bg-emerald-500' },
@@ -89,7 +94,7 @@ export default function Sidebar({
         <div className="flex items-center justify-between pb-4 border-b border-slate-800">
           <div 
             className="flex items-center gap-3 cursor-pointer group"
-            onClick={() => handleNavClick('dashboard')}
+            onClick={() => handleNavClick(isCashier ? 'pos' : 'dashboard')}
           >
             <img 
               src="/pharmacy-logo.png" 
@@ -237,9 +242,11 @@ export default function Sidebar({
                 <div className="text-xs font-bold text-white truncate">
                   {currentUser.name}
                 </div>
-                <div className="text-[10px] text-sky-400 font-extrabold uppercase tracking-wider truncate flex items-center gap-1">
-                  <ShieldCheck className="w-3 h-3 text-sky-400 shrink-0" />
-                  {currentUser.role || 'Pharmacist (Admin)'}
+                <div className={`text-[10px] font-extrabold uppercase tracking-wider truncate flex items-center gap-1 ${
+                  isCashier ? 'text-amber-400' : 'text-sky-400'
+                }`}>
+                  <ShieldCheck className={`w-3 h-3 shrink-0 ${isCashier ? 'text-amber-400' : 'text-sky-400'}`} />
+                  {isCashier ? 'Cashier (කැෂියර්)' : 'Admin / Pharmacist (පරිපාලක)'}
                 </div>
               </div>
             </div>
@@ -270,7 +277,7 @@ export default function Sidebar({
       <header className="lg:hidden bg-slate-900 text-white border-b border-slate-800 sticky top-0 z-40 px-4 py-2.5 flex items-center justify-between print:hidden">
         <div 
           className="flex items-center gap-2.5 cursor-pointer"
-          onClick={() => setActiveTab('dashboard')}
+          onClick={() => setActiveTab(isCashier ? 'pos' : 'dashboard')}
         >
           <img 
             src="/pharmacy-logo.png" 
@@ -282,7 +289,7 @@ export default function Sidebar({
               Aaush pharmacy
             </div>
             <div className="text-[8px] text-sky-400 font-extrabold uppercase tracking-wider">
-              GROCERY & HEALTH MEDI CARE
+              GROCERY, BOOKSHOP & HEALTH MEDI CARE
             </div>
           </div>
         </div>

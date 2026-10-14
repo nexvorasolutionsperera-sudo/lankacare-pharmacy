@@ -49,7 +49,7 @@ const PHOTOCOPY_SERVICES = [
   { id: 'binding', name: 'Spiral / Tape Book Binding', defaultRate: 200, cost: 60, type: 'other' }
 ];
 
-export default function ReloadServices({ t = {} }) {
+export default function ReloadServices({ currentUser, isCashier = false, t = {} }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('all'); // 'all' | 'reload' | 'photocopy'
@@ -291,7 +291,7 @@ export default function ReloadServices({ t = {} }) {
       </div>
 
       {/* KPI Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className={`grid gap-4 ${isCashier ? 'grid-cols-1 sm:grid-cols-3' : 'grid-cols-2 lg:grid-cols-4'}`}>
         
         {/* Total Reloads Today */}
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
@@ -329,23 +329,25 @@ export default function ReloadServices({ t = {} }) {
           </div>
         </div>
 
-        {/* Total Profit / Commission */}
-        <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-              {t.totalCommissionToday || 'මුළු කොමිස් ලාභය (Commission)'}
-            </span>
-            <span className="p-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-xl">
-              <DollarSign className="w-4 h-4" />
-            </span>
+        {/* Total Profit / Commission (Admin only) */}
+        {!isCashier && (
+          <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                {t.totalCommissionToday || 'මුළු කොමිස් ලාභය (Commission)'}
+              </span>
+              <span className="p-2 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 rounded-xl">
+                <DollarSign className="w-4 h-4" />
+              </span>
+            </div>
+            <div className="mt-2 text-2xl font-black text-emerald-600 dark:text-emerald-400">
+              {formatCurrency(stats.totalProfitCommission)}
+            </div>
+            <div className="text-[10px] text-slate-400 mt-1">
+              Net earnings from services today
+            </div>
           </div>
-          <div className="mt-2 text-2xl font-black text-emerald-600 dark:text-emerald-400">
-            {formatCurrency(stats.totalProfitCommission)}
-          </div>
-          <div className="text-[10px] text-slate-400 mt-1">
-            Net earnings from services today
-          </div>
-        </div>
+        )}
 
         {/* Transactions Today */}
         <div className="bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
@@ -734,7 +736,7 @@ export default function ReloadServices({ t = {} }) {
                 <th className="py-3 px-4">Recipient / Customer</th>
                 <th className="py-3 px-4">Quantity / Details</th>
                 <th className="py-3 px-4">Total Amount (රු.)</th>
-                <th className="py-3 px-4">Profit / Commission</th>
+                {!isCashier && <th className="py-3 px-4">Profit / Commission</th>}
                 <th className="py-3 px-4">Date & Time</th>
                 <th className="py-3 px-4 text-right">Actions</th>
               </tr>
@@ -742,13 +744,13 @@ export default function ReloadServices({ t = {} }) {
             <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
               {loading ? (
                 <tr>
-                  <td colSpan="8" className="py-8 text-center text-slate-400 italic">
+                  <td colSpan={isCashier ? "7" : "8"} className="py-8 text-center text-slate-400 italic">
                     දත්ත ප්‍රවේශ වෙමින් පවතී... (Loading Transactions)
                   </td>
                 </tr>
               ) : filteredOrders.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="py-12 text-center text-slate-400">
+                  <td colSpan={isCashier ? "7" : "8"} className="py-12 text-center text-slate-400">
                     <Smartphone className="w-8 h-8 mx-auto text-slate-300 dark:text-slate-700 mb-2" />
                     <p className="font-medium">කිසිදු ගනුදෙනු වාර්තාවක් හමු නොවීය (No Transactions Found)</p>
                   </td>
@@ -797,11 +799,13 @@ export default function ReloadServices({ t = {} }) {
                       </td>
 
                       {/* Commission */}
-                      <td className="py-3 px-4">
-                        <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
-                          +{formatCurrency(order.commission_profit)}
-                        </span>
-                      </td>
+                      {!isCashier && (
+                        <td className="py-3 px-4">
+                          <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                            +{formatCurrency(order.commission_profit)}
+                          </span>
+                        </td>
+                      )}
 
                       {/* Date & Time */}
                       <td className="py-3 px-4 text-slate-500 text-[11px]">
@@ -821,13 +825,15 @@ export default function ReloadServices({ t = {} }) {
                           >
                             <Printer className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            onClick={() => handleDeleteOrder(order.id)}
-                            title="Delete Record"
-                            className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-400 hover:text-rose-600 transition-colors cursor-pointer"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {!isCashier && (
+                            <button
+                              onClick={() => handleDeleteOrder(order.id)}
+                              title="Delete Record"
+                              className="p-1.5 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/40 text-rose-400 hover:text-rose-600 transition-colors cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
 

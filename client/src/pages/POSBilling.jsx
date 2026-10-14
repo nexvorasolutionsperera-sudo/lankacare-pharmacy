@@ -25,7 +25,7 @@ import {
 import { api, formatCurrency } from '../api';
 import ReceiptModal from '../components/ReceiptModal';
 
-export default function POSBilling({ medicines = [], customers = [], doctors = [], onRefreshData, t }) {
+export default function POSBilling({ medicines = [], customers = [], doctors = [], currentUser, onRefreshData, t }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [cart, setCart] = useState([]);
@@ -271,7 +271,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
         doctor_id: selectedDoctorId ? String(selectedDoctorId) : null,
         customer_name: customerName,
         doctor_name: doctorName,
-        cashier_name: 'Cashier Staff',
+        cashier_name: currentUser?.name || 'Cashier Staff',
         subtotal: Number(rawSubtotal.toFixed(2)) || 0,
         discount: Number(totalAllDiscounts.toFixed(2)) || 0,
         total_amount: Number(grandTotal.toFixed(2)) || 0,
