@@ -1,14 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import mongoose from 'mongoose';
-import dns from 'dns';
-
-// Only apply custom DNS servers locally (bypasses ISP block); let Vercel handle production DNS
-if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
-  try {
-    dns.setServers(['8.8.8.8', '1.1.1.1']);
-  } catch (e) {}
-}
 
 const app = express();
 app.use(cors());
@@ -17,20 +9,42 @@ app.use(express.json());
 // MongoDB URI
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://lankacare_user:EnABcd343%23Damith321@cluster0.uuksd4z.mongodb.net/pharmacy?retryWrites=true&w=majority&appName=Cluster0";
 
-let isConnected = false;
+// Global cached connection for Serverless environments (prevents connection leaks and cold start crashes)
+let cached = global.mongoose;
+if (!cached) {
+  cached = global.mongoose = { conn: null, promise: null };
+}
+
 async function connectDB() {
-  if (isConnected && mongoose.connection.readyState === 1) return;
-  try {
-    await mongoose.connect(MONGODB_URI, {
-      serverSelectionTimeoutMS: 5000,
-      bufferCommands: false
-    });
-    isConnected = true;
-    console.log('✅ Connected to MongoDB Atlas');
-    await seedServerlessDB();
-  } catch (err) {
-    console.error('MongoDB connection error:', err.message);
+  if (cached.conn) {
+    return cached.conn;
   }
+
+  if (!cached.promise) {
+    const opts = {
+      serverSelectionTimeoutMS: 8000,
+      bufferCommands: true,
+    };
+    cached.promise = mongoose.connect(MONGODB_URI, opts).then(async (m) => {
+      console.log('✅ Connected to MongoDB Atlas');
+      try {
+        await seedServerlessDB();
+      } catch (e) {
+        console.warn('Seed non-critical error:', e.message);
+      }
+      return m;
+    });
+  }
+
+  try {
+    cached.conn = await cached.promise;
+  } catch (e) {
+    cached.promise = null;
+    console.error('MongoDB connection error:', e.message);
+    throw e;
+  }
+
+  return cached.conn;
 }
 
 // Schemas & Models
@@ -155,8 +169,13 @@ async function seedServerlessDB() {
 
 // Middleware to ensure DB connection
 app.use(async (req, res, next) => {
-  await connectDB();
-  next();
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    console.error('DB Connection middleware error:', err.message);
+    res.status(503).json({ error: 'Database connection failed. Please verify MongoDB Atlas Network Access (Allow 0.0.0.0/0).' });
+  }
 });
 
 // Helper
