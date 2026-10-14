@@ -1,128 +1,135 @@
 const API_BASE = '/api';
 
+async function safeFetch(url, options = {}) {
+  try {
+    const res = await fetch(url, options);
+    const contentType = res.headers.get('content-type') || '';
+    
+    let data;
+    if (contentType.includes('application/json')) {
+      data = await res.json();
+    } else {
+      const text = await res.text();
+      // If server returned HTML / Plain text error
+      if (!res.ok) {
+        throw new Error(text.length < 200 ? text : `Server Error (${res.status})`);
+      }
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = text;
+      }
+    }
+
+    if (!res.ok) {
+      throw new Error((data && data.error) ? data.error : `Request failed with status ${res.status}`);
+    }
+    return data;
+  } catch (err) {
+    console.error(`API Error on ${url}:`, err.message);
+    throw err;
+  }
+}
+
 export const api = {
   // Auth
-  login: (username, password) => fetch(`${API_BASE}/auth/login`, {
+  login: (username, password) => safeFetch(`${API_BASE}/auth/login`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ username, password })
-  }).then(async res => {
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Login failed');
-    return json;
   }),
-  getUsers: () => fetch(`${API_BASE}/auth/users`).then(res => res.json()),
+  getUsers: () => safeFetch(`${API_BASE}/auth/users`).catch(() => []),
 
   // Dashboard
-  getDashboardStats: () => fetch(`${API_BASE}/dashboard/stats`).then(res => res.json()),
+  getDashboardStats: () => safeFetch(`${API_BASE}/dashboard/stats`).catch(() => null),
 
   // Medicines
   getMedicines: (params = {}) => {
     const query = new URLSearchParams(params).toString();
-    return fetch(`${API_BASE}/medicines?${query}`).then(res => res.json());
+    return safeFetch(`${API_BASE}/medicines?${query}`).catch(() => []);
   },
-  createMedicine: (data) => fetch(`${API_BASE}/medicines`, {
+  createMedicine: (data) => safeFetch(`${API_BASE}/medicines`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
-  }).then(async res => {
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Failed to create medicine');
-    return json;
   }),
-  updateMedicine: (id, data) => fetch(`${API_BASE}/medicines/${id}`, {
+  updateMedicine: (id, data) => safeFetch(`${API_BASE}/medicines/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
-  }).then(async res => {
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Failed to update medicine');
-    return json;
   }),
-  deleteMedicine: (id) => fetch(`${API_BASE}/medicines/${id}`, {
+  deleteMedicine: (id) => safeFetch(`${API_BASE}/medicines/${id}`, {
     method: 'DELETE'
-  }).then(res => res.json()),
+  }),
 
   // Categories
-  getCategories: () => fetch(`${API_BASE}/categories`).then(res => res.json()),
-  createCategory: (data) => fetch(`${API_BASE}/categories`, {
+  getCategories: () => safeFetch(`${API_BASE}/categories`).catch(() => []),
+  createCategory: (data) => safeFetch(`${API_BASE}/categories`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
-  }).then(res => res.json()),
+  }),
 
   // Suppliers / Dealers
-  getSuppliers: () => fetch(`${API_BASE}/suppliers`).then(res => res.json()),
-  createSupplier: (data) => fetch(`${API_BASE}/suppliers`, {
+  getSuppliers: () => safeFetch(`${API_BASE}/suppliers`).catch(() => []),
+  createSupplier: (data) => safeFetch(`${API_BASE}/suppliers`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
-  }).then(async res => {
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Failed to add supplier');
-    return json;
   }),
-  updateSupplier: (id, data) => fetch(`${API_BASE}/suppliers/${id}`, {
+  updateSupplier: (id, data) => safeFetch(`${API_BASE}/suppliers/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
-  }).then(res => res.json()),
-  deleteSupplier: (id) => fetch(`${API_BASE}/suppliers/${id}`, {
+  }),
+  deleteSupplier: (id) => safeFetch(`${API_BASE}/suppliers/${id}`, {
     method: 'DELETE'
-  }).then(res => res.json()),
-  paySupplier: (id, amount) => fetch(`${API_BASE}/suppliers/${id}/pay`, {
+  }),
+  paySupplier: (id, amount) => safeFetch(`${API_BASE}/suppliers/${id}/pay`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ amount })
-  }).then(res => res.json()),
+  }),
 
   // Dealer Purchases / Stock Inward
-  getPurchases: () => fetch(`${API_BASE}/purchases`).then(res => res.json()),
-  createPurchase: (data) => fetch(`${API_BASE}/purchases`, {
+  getPurchases: () => safeFetch(`${API_BASE}/dealer-purchases`).catch(() => []),
+  createPurchase: (data) => safeFetch(`${API_BASE}/dealer-purchases`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
-  }).then(async res => {
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Failed to record purchase');
-    return json;
   }),
 
   // Customers & Doctors
-  getCustomers: () => fetch(`${API_BASE}/customers`).then(res => res.json()),
-  createCustomer: (data) => fetch(`${API_BASE}/customers`, {
+  getCustomers: () => safeFetch(`${API_BASE}/customers`).catch(() => []),
+  createCustomer: (data) => safeFetch(`${API_BASE}/customers`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
-  }).then(res => res.json()),
+  }),
 
-  getDoctors: () => fetch(`${API_BASE}/doctors`).then(res => res.json()),
-  createDoctor: (data) => fetch(`${API_BASE}/doctors`, {
+  getDoctors: () => safeFetch(`${API_BASE}/doctors`).catch(() => []),
+  createDoctor: (data) => safeFetch(`${API_BASE}/doctors`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
-  }).then(res => res.json()),
+  }),
 
   // POS Sales
   getSales: (params = {}) => {
     const query = new URLSearchParams(params).toString();
-    return fetch(`${API_BASE}/sales?${query}`).then(res => res.json());
+    return safeFetch(`${API_BASE}/sales?${query}`).catch(() => []);
   },
-  getSaleById: (id) => fetch(`${API_BASE}/sales/${id}`).then(res => res.json()),
-  createSale: (data) => fetch(`${API_BASE}/sales`, {
+  getSaleById: (id) => safeFetch(`${API_BASE}/sales/${id}`),
+  createSale: (data) => safeFetch(`${API_BASE}/sales`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(data)
-  }).then(async res => {
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || 'Failed to process checkout');
-    return json;
   }),
 
   // Reports
   getReportsSummary: (params = {}) => {
     const query = new URLSearchParams(params).toString();
-    return fetch(`${API_BASE}/reports/sales-summary?${query}`).then(res => res.json());
+    return safeFetch(`${API_BASE}/reports/sales?${query}`).catch(() => null);
   }
 };
 

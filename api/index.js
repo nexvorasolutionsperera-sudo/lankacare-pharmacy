@@ -23,6 +23,7 @@ async function connectDB() {
     });
     isConnected = true;
     console.log('✅ Connected to MongoDB Atlas');
+    await seedServerlessDB();
   } catch (err) {
     console.error('MongoDB connection error:', err);
   }
@@ -130,6 +131,23 @@ const Customer = mongoose.models.Customer || mongoose.model('Customer', Customer
 const Doctor = mongoose.models.Doctor || mongoose.model('Doctor', DoctorSchema);
 const Sale = mongoose.models.Sale || mongoose.model('Sale', SaleSchema);
 const DealerPurchase = mongoose.models.DealerPurchase || mongoose.model('DealerPurchase', DealerPurchaseSchema);
+
+async function seedServerlessDB() {
+  try {
+    const userCount = await User.countDocuments();
+    if (userCount === 0) {
+      console.log('🌱 Seeding initial users into MongoDB Atlas...');
+      await User.create([
+        { username: 'admin', password: 'admin123', name: 'Pharmacist (Admin)', role: 'admin' },
+        { username: 'cashier', password: 'cashier123', name: 'Counter Cashier', role: 'cashier' }
+      ]);
+    } else {
+      await User.updateOne({ username: 'admin', name: 'Dr. Kasun Perera' }, { $set: { name: 'Pharmacist (Admin)' } });
+    }
+  } catch (e) {
+    console.warn('Seed error:', e.message);
+  }
+}
 
 // Middleware to ensure DB connection
 app.use(async (req, res, next) => {
