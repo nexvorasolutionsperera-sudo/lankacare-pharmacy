@@ -29,7 +29,10 @@ import {
   getAllMedicareOrders,
   createMedicareOrder,
   updateMedicareOrder,
-  deleteMedicareOrder
+  deleteMedicareOrder,
+  getAllReloadOrders,
+  createReloadOrder,
+  deleteReloadOrder
 } from './hybridDatabase.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -354,6 +357,34 @@ app.put('/api/medicare/:id', async (req, res) => {
 app.delete('/api/medicare/:id', async (req, res) => {
   try {
     await deleteMedicareOrder(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== PHOTOCOPY & RELOAD SERVICES ====================
+app.get('/api/reloads', async (req, res) => {
+  try {
+    const orders = await getAllReloadOrders();
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/reloads', async (req, res) => {
+  try {
+    const order = await createReloadOrder(req.body);
+    res.status(201).json(order);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/reloads/:id', async (req, res) => {
+  try {
+    await deleteReloadOrder(req.params.id);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });

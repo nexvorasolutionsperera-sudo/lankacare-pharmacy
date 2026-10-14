@@ -16,7 +16,8 @@ import {
   X,
   ShieldCheck,
   UserCheck,
-  Activity
+  Activity,
+  Smartphone
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -63,6 +64,7 @@ export default function Sidebar({
     },
     { id: 'customers', label: t.customersDocs, icon: Users },
     { id: 'medicare', label: t.medicareServices || 'Medicare & Lab Tests', icon: Activity },
+    { id: 'reloads', label: t.reloadServices || 'Photocopy & Reload', icon: Smartphone },
     { id: 'reports', label: t.reports, icon: BarChart3 }
   ];
 

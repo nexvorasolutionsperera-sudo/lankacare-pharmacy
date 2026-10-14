@@ -17,7 +17,8 @@ import {
   ArrowUpRight,
   Pill,
   ShoppingBag,
-  Activity
+  Activity,
+  Smartphone
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../api';
 import Logo from '../components/Logo';
@@ -125,6 +126,15 @@ export default function Dashboard({ stats, setActiveTab, onOpenAddMed, onOpenAdd
             >
               <Activity className="w-4 h-4" />
               <span>{t.medicareServices || 'Lab Tests & ECG'}</span>
+            </button>
+
+            {/* Photocopy & Reload quick button */}
+            <button
+              onClick={() => setActiveTab('reloads')}
+              className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-blue-600/90 hover:bg-blue-600 text-white font-bold text-xs shadow-md border border-blue-400/30 transition-all cursor-pointer active:scale-95"
+            >
+              <Smartphone className="w-4 h-4" />
+              <span>{t.reloadServices || 'Photocopy & Reload'}</span>
             </button>
 
             <button

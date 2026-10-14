@@ -136,3 +136,22 @@ export const Doctor = mongoose.model('Doctor', DoctorSchema);
 export const Sale = mongoose.model('Sale', SaleSchema);
 export const DealerPurchase = mongoose.model('DealerPurchase', DealerPurchaseSchema);
 export const MedicareOrder = mongoose.model('MedicareOrder', MedicareOrderSchema);
+
+const ReloadOrderSchema = new mongoose.Schema({
+  transaction_id: { type: String, required: true, unique: true },
+  type: { type: String, enum: ['reload', 'bill_payment', 'photocopy', 'printing', 'laminating', 'other'], default: 'reload' },
+  category: { type: String, default: 'Mobile Reload' },
+  service_name: { type: String, required: true },
+  recipient: { type: String, default: '' },
+  details: { type: String, default: '' },
+  quantity: { type: Number, default: 1 },
+  unit_price: { type: Number, default: 0 },
+  amount: { type: Number, required: true },
+  cost_amount: { type: Number, default: 0 },
+  commission_profit: { type: Number, default: 0 },
+  payment_method: { type: String, default: 'Cash' },
+  status: { type: String, enum: ['Success', 'Pending', 'Failed'], default: 'Success' },
+  operator: { type: String, default: '' }
+}, { timestamps: true });
+
+export const ReloadOrder = mongoose.model('ReloadOrder', ReloadOrderSchema);

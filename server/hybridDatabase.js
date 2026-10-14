@@ -14,7 +14,7 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 import mongoose from 'mongoose';
 import sqliteDb, { initDatabase as initSqlite } from './database.js';
 import { connectMongoDB } from './mongoDatabase.js';
-import { User, Category, Supplier, Medicine, Customer, Doctor, Sale, DealerPurchase, MedicareOrder } from './models.js';
+import { User, Category, Supplier, Medicine, Customer, Doctor, Sale, DealerPurchase, MedicareOrder, ReloadOrder } from './models.js';
 
 let currentMode = 'offline'; // 'online' | 'offline'
 
@@ -185,6 +185,61 @@ function syncMedicareOrderToSQLite(data) {
   }
 }
 
+function syncReloadOrderToSQLite(data) {
+  try {
+    const existing = sqliteDb.prepare('SELECT id FROM communication_services WHERE transaction_id = ?').get(data.transaction_id);
+    if (existing) {
+      sqliteDb.prepare(`
+        UPDATE communication_services SET
+          type = ?, category = ?, service_name = ?, recipient = ?, details = ?,
+          quantity = ?, unit_price = ?, amount = ?, cost_amount = ?, commission_profit = ?,
+          payment_method = ?, status = ?, operator = ?
+        WHERE id = ?
+      `).run(
+        data.type || 'reload',
+        data.category || 'Mobile Reload',
+        data.service_name,
+        data.recipient || '',
+        data.details || '',
+        Number(data.quantity || 1),
+        Number(data.unit_price || 0),
+        Number(data.amount || 0),
+        Number(data.cost_amount || 0),
+        Number(data.commission_profit || 0),
+        data.payment_method || 'Cash',
+        data.status || 'Success',
+        data.operator || '',
+        existing.id
+      );
+    } else {
+      sqliteDb.prepare(`
+        INSERT INTO communication_services (
+          transaction_id, type, category, service_name, recipient, details,
+          quantity, unit_price, amount, cost_amount, commission_profit,
+          payment_method, status, operator
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        data.transaction_id,
+        data.type || 'reload',
+        data.category || 'Mobile Reload',
+        data.service_name,
+        data.recipient || '',
+        data.details || '',
+        Number(data.quantity || 1),
+        Number(data.unit_price || 0),
+        Number(data.amount || 0),
+        Number(data.cost_amount || 0),
+        Number(data.commission_profit || 0),
+        data.payment_method || 'Cash',
+        data.status || 'Success',
+        data.operator || ''
+      );
+    }
+  } catch (err) {
+    console.warn('⚠️ SQLite Reload Sync error:', err.message);
+  }
+}
+
 // Background sync: pulls latest medicines from MongoDB into SQLite on startup
 async function mirrorMongoToSQLite() {
   try {
@@ -201,7 +256,11 @@ async function mirrorMongoToSQLite() {
     for (const mo of medOrders) {
       syncMedicareOrderToSQLite(mo);
     }
-    console.log(`✅ Mirrored ${meds.length} Medicines, ${sups.length} Suppliers & ${medOrders.length} Medicare Orders into Local SQLite!`);
+    const reloadOrders = await ReloadOrder.find();
+    for (const ro of reloadOrders) {
+      syncReloadOrderToSQLite(ro);
+    }
+    console.log(`✅ Mirrored ${meds.length} Medicines, ${sups.length} Suppliers, ${medOrders.length} Lab Orders & ${reloadOrders.length} Reloads into Local SQLite!`);
   } catch (err) {
     console.warn('⚠️ Mirroring Warning:', err.message);
   }
@@ -751,6 +810,60 @@ export async function deleteMedicareOrder(id) {
     await MedicareOrder.findByIdAndDelete(id);
   }
   sqliteDb.prepare('DELETE FROM medicare_orders WHERE id = ? OR order_number = ?').run(Number(id) || 0, id);
+  return { success: true };
+}
+
+// ==================== RELOAD & PHOTOCOPY SERVICES ====================
+
+export async function getAllReloadOrders() {
+  if (currentMode === 'online') {
+    const orders = await ReloadOrder.find().sort({ createdAt: -1 });
+    return orders.map(o => ({ id: o._id, ...o.toObject() }));
+  } else {
+    const rows = sqliteDb.prepare('SELECT * FROM communication_services ORDER BY created_at DESC').all();
+    return rows.map(r => ({ id: r.id, ...r }));
+  }
+}
+
+export async function createReloadOrder(data) {
+  const prefix = data.type === 'photocopy' ? 'COP' : data.type === 'bill_payment' ? 'BIL' : 'REL';
+  const txId = data.transaction_id || `${prefix}-${Date.now().toString().slice(-6)}`;
+  const orderData = {
+    transaction_id: txId,
+    type: data.type || 'reload',
+    category: data.category || 'Mobile Reload',
+    service_name: data.service_name,
+    recipient: data.recipient || '',
+    details: data.details || '',
+    quantity: Number(data.quantity || 1),
+    unit_price: Number(data.unit_price || 0),
+    amount: Number(data.amount || 0),
+    cost_amount: Number(data.cost_amount || 0),
+    commission_profit: Number(data.commission_profit || 0),
+    payment_method: data.payment_method || 'Cash',
+    status: data.status || 'Success',
+    operator: data.operator || ''
+  };
+
+  syncReloadOrderToSQLite(orderData);
+
+  if (currentMode === 'online') {
+    const order = await ReloadOrder.create(orderData);
+    return { id: order._id, ...order.toObject() };
+  } else {
+    const row = sqliteDb.prepare('SELECT * FROM communication_services WHERE transaction_id = ?').get(txId);
+    return {
+      id: row ? row.id : Date.now(),
+      ...orderData
+    };
+  }
+}
+
+export async function deleteReloadOrder(id) {
+  if (currentMode === 'online' && mongoose.Types.ObjectId.isValid(id)) {
+    await ReloadOrder.findByIdAndDelete(id);
+  }
+  sqliteDb.prepare('DELETE FROM communication_services WHERE id = ? OR transaction_id = ?').run(Number(id) || 0, id);
   return { success: true };
 }
 

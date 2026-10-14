@@ -160,6 +160,25 @@ export function initDatabase() {
       remarks TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS communication_services (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      transaction_id TEXT UNIQUE NOT NULL,
+      type TEXT NOT NULL,
+      category TEXT NOT NULL,
+      service_name TEXT NOT NULL,
+      recipient TEXT,
+      details TEXT,
+      quantity INTEGER DEFAULT 1,
+      unit_price REAL NOT NULL,
+      amount REAL NOT NULL,
+      cost_amount REAL DEFAULT 0,
+      commission_profit REAL DEFAULT 0,
+      payment_method TEXT DEFAULT 'Cash',
+      status TEXT DEFAULT 'Success',
+      operator TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   // Seed default users if not present

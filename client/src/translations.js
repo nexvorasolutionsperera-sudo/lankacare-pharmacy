@@ -8,6 +8,7 @@ export const translations = {
     alerts: "Alerts",
     customersDocs: "Customers & Doctors",
     medicareServices: "Medicare & Lab Tests",
+    reloadServices: "Photocopy & Reload",
     reports: "Reports",
     online: "System Online",
     logout: "Logout",
@@ -175,7 +176,25 @@ export const translations = {
     searchOrders: "Search by Patient name, phone or Order ID...",
     printToken: "Print Lab Token",
     downloadWorkOrder: "Download Work Order PDF",
-    noOrdersFound: "No Medicare or Lab test orders found"
+    noOrdersFound: "No Medicare or Lab test orders found",
+
+    // Photocopy & Reload
+    reloadTitle: "Photocopy, Printing & Mobile Reloads",
+    reloadSubtitle: "Instant mobile reloads, utility bill settlements, photocopying, laminating and document scanning",
+    newReload: "Mobile Reload / Bill Pay",
+    newPhotocopy: "Photocopy / Print Billing",
+    mobileNumber: "Mobile / Account Number",
+    operatorNetwork: "Operator / Network",
+    reloadAmount: "Reload Amount (LKR)",
+    commission: "Commission Earned",
+    serviceCharge: "Service Fee",
+    photocopyType: "Document / Print Type",
+    numberOfCopies: "Number of Copies",
+    unitRate: "Rate per Copy",
+    totalReloadsToday: "Today's Reloads",
+    totalPhotocopyToday: "Photocopy Revenue",
+    totalCommissionToday: "Commission Profit",
+    printSlip: "Print Receipt / Slip"
   },
 
   si: {
@@ -187,6 +206,7 @@ export const translations = {
     alerts: "අනතුරු ඇඟවීම්",
     customersDocs: "පාරිභෝගිකයින් & වෛද්‍යවරුන්",
     medicareServices: "සායනික & රුධිර පරීක්ෂණ (ECG/Lab)",
+    reloadServices: "ෆොටෝකොපි & රීලෝඩ් (Print/Reload)",
     reports: "විකුණුම් වාර්තා",
     online: "පද්ධතිය සක්‍රියයි",
     logout: "ඉවත් වන්න",
@@ -354,6 +374,24 @@ export const translations = {
     searchOrders: "නම, දුරකථන අංකය හෝ Order ID මඟින් සොයන්න...",
     printToken: "ටෝකනය මුද්‍රණය",
     downloadWorkOrder: "Work Order (PDF)",
-    noOrdersFound: "පරීක්ෂණ හෝ ප්‍රතිකාර වාර්තා හමු නොවීය"
+    noOrdersFound: "පරීක්ෂණ හෝ ප්‍රතිකාර වාර්තා හමු නොවීය",
+
+    // Photocopy & Reload
+    reloadTitle: "ෆොටෝකොපි, මුද්‍රණ සහ මොබයිල් රීලෝඩ් (Photocopy & Reload)",
+    reloadSubtitle: "ක්ෂණික මොබයිල් රීලෝඩ්, උපයෝගිතා බිල්පත් ගෙවීම්, ෆොටෝකොපි, ලැමිනේටින් සහ ස්කෑන් සේවා",
+    newReload: "මොබයිල් රීලෝඩ් / බිල්පත් ගෙවීම",
+    newPhotocopy: "ෆොටෝකොපි / මුද්‍රණ බිල්පත",
+    mobileNumber: "දුරකථන / ගිණුම් අංකය",
+    operatorNetwork: "සම්බන්ධතාවය (Network)",
+    reloadAmount: "රීලෝඩ් මුදල (රු.)",
+    commission: "ලැබූ කොමිස් මුදල",
+    serviceCharge: "සේවා ගාස්තුව",
+    photocopyType: "පිටපත් / මුද්‍රණ වර්ගය",
+    numberOfCopies: "පිටපත් ගණන",
+    unitRate: "පිටපතකට මිල",
+    totalReloadsToday: "අද රීලෝඩ් එකතුව",
+    totalPhotocopyToday: "ෆොටෝකොපි ආදායම",
+    totalCommissionToday: "මුළු කොමිස් ලාභය",
+    printSlip: "රිසිට්පත මුද්‍රණය"
   }
 };

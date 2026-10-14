@@ -7,6 +7,7 @@ import Suppliers from './pages/Suppliers';
 import Alerts from './pages/Alerts';
 import CustomersDoctors from './pages/CustomersDoctors';
 import MedicareServices from './pages/MedicareServices';
+import ReloadServices from './pages/ReloadServices';
 import Reports from './pages/Reports';
 import LoginPage from './pages/LoginPage';
 
@@ -227,6 +228,12 @@ export default function App() {
             <MedicareServices
               customers={customers}
               doctors={doctors}
+              t={t}
+            />
+          )}
+
+          {activeTab === 'reloads' && (
+            <ReloadServices
               t={t}
             />
           )}

@@ -179,6 +179,25 @@ const Sale = mongoose.models.Sale || mongoose.model('Sale', SaleSchema);
 const DealerPurchase = mongoose.models.DealerPurchase || mongoose.model('DealerPurchase', DealerPurchaseSchema);
 const MedicareOrder = mongoose.models.MedicareOrder || mongoose.model('MedicareOrder', MedicareOrderSchema);
 
+const ReloadOrderSchema = new mongoose.Schema({
+  transaction_id: { type: String, required: true, unique: true },
+  type: { type: String, enum: ['reload', 'bill_payment', 'photocopy', 'printing', 'laminating', 'other'], default: 'reload' },
+  category: { type: String, default: 'Mobile Reload' },
+  service_name: { type: String, required: true },
+  recipient: { type: String, default: '' },
+  details: { type: String, default: '' },
+  quantity: { type: Number, default: 1 },
+  unit_price: { type: Number, default: 0 },
+  amount: { type: Number, required: true },
+  cost_amount: { type: Number, default: 0 },
+  commission_profit: { type: Number, default: 0 },
+  payment_method: { type: String, default: 'Cash' },
+  status: { type: String, enum: ['Success', 'Pending', 'Failed'], default: 'Success' },
+  operator: { type: String, default: '' }
+}, { timestamps: true });
+
+const ReloadOrder = mongoose.models.ReloadOrder || mongoose.model('ReloadOrder', ReloadOrderSchema);
+
 async function seedServerlessDB() {
   try {
     const userCount = await User.countDocuments();
@@ -689,6 +708,54 @@ app.delete('/api/medicare/:id', async (req, res) => {
   try {
     await connectDB();
     await MedicareOrder.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==================== PHOTOCOPY & RELOAD SERVICES ====================
+app.get('/api/reloads', async (req, res) => {
+  try {
+    await connectDB();
+    const orders = await ReloadOrder.find().sort({ createdAt: -1 });
+    res.json(orders.map(o => ({ id: o._id, ...o.toObject() })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/reloads', async (req, res) => {
+  try {
+    await connectDB();
+    const prefix = req.body.type === 'photocopy' ? 'COP' : req.body.type === 'bill_payment' ? 'BIL' : 'REL';
+    const txId = req.body.transaction_id || `${prefix}-${Date.now().toString().slice(-6)}`;
+    const order = await ReloadOrder.create({
+      transaction_id: txId,
+      type: req.body.type || 'reload',
+      category: req.body.category || 'Mobile Reload',
+      service_name: req.body.service_name,
+      recipient: req.body.recipient || '',
+      details: req.body.details || '',
+      quantity: Number(req.body.quantity || 1),
+      unit_price: Number(req.body.unit_price || 0),
+      amount: Number(req.body.amount || 0),
+      cost_amount: Number(req.body.cost_amount || 0),
+      commission_profit: Number(req.body.commission_profit || 0),
+      payment_method: req.body.payment_method || 'Cash',
+      status: req.body.status || 'Success',
+      operator: req.body.operator || ''
+    });
+    res.status(201).json({ id: order._id, ...order.toObject() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/reloads/:id', async (req, res) => {
+  try {
+    await connectDB();
+    await ReloadOrder.findByIdAndDelete(req.params.id);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -146,6 +146,17 @@ export const api = {
   }),
   deleteMedicareOrder: (id) => safeFetch(`${API_BASE}/medicare/${id}`, {
     method: 'DELETE'
+  }),
+
+  // Photocopy, Printing & Mobile Reloads
+  getReloadOrders: () => safeFetch(`${API_BASE}/reloads`).catch(() => []),
+  createReloadOrder: (data) => safeFetch(`${API_BASE}/reloads`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }),
+  deleteReloadOrder: (id) => safeFetch(`${API_BASE}/reloads/${id}`, {
+    method: 'DELETE'
   })
 };
 
