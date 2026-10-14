@@ -19,7 +19,8 @@ import {
   Percent,
   Sparkles,
   Zap,
-  Check
+  Check,
+  Calculator
 } from 'lucide-react';
 import { api, formatCurrency } from '../api';
 import ReceiptModal from '../components/ReceiptModal';
@@ -34,10 +35,16 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [cashTendered, setCashTendered] = useState('');
   const [cardLast4, setCardLast4] = useState('');
-  const [selectedCustomerId, setSelectedCustomerId] = useState('');
-  const [selectedDoctorId, setSelectedDoctorId] = useState('');
-  const [customCustomerName, setCustomCustomerName] = useState('');
   
+  // Customer & Doctor inputs
+  const [selectedCustomerId, setSelectedCustomerId] = useState('');
+  const [customCustomerName, setCustomCustomerName] = useState('');
+  const [selectedDoctorId, setSelectedDoctorId] = useState('');
+  const [customDoctorName, setCustomDoctorName] = useState('');
+  
+  // Numpad Calculator Toggle
+  const [showCalculator, setShowCalculator] = useState(false);
+
   const [completedSale, setCompletedSale] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -190,6 +197,10 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
     setCashTendered('');
     setCardLast4('');
     setDiscountPercent(0);
+    setCustomCustomerName('');
+    setSelectedCustomerId('');
+    setCustomDoctorName('');
+    setSelectedDoctorId('');
   };
 
   // ==================== FINANCIAL CALCULATIONS ====================
@@ -202,12 +213,32 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
   const extraBillDiscount = Math.round((postItemSubtotal * (Number(discountPercent || 0) / 100)) * 100) / 100;
   const totalAllDiscounts = totalItemDiscounts + extraBillDiscount;
 
-  const grandTotal = Math.max(0, rawSubtotal - totalAllDiscounts);
-  const tendered = paymentMethod === 'Card' ? grandTotal : (Number(cashTendered) || 0);
-  const changeDue = paymentMethod === 'Card' ? 0 : (tendered >= grandTotal ? (tendered - grandTotal) : 0);
+  const grandTotal = Math.max(0, Math.round((rawSubtotal - totalAllDiscounts) * 100) / 100);
+  
+  // Real-time Tendered and Change calculations
+  const tendered = paymentMethod === 'Card' ? grandTotal : (cashTendered !== '' ? Number(cashTendered) : 0);
+  const changeDue = paymentMethod === 'Card' ? 0 : (tendered >= grandTotal ? Math.round((tendered - grandTotal) * 100) / 100 : 0);
+  const shortAmount = paymentMethod === 'Cash' && cashTendered !== '' && tendered < grandTotal ? Math.round((grandTotal - tendered) * 100) / 100 : 0;
 
-  // Quick Tender buttons
-  const quickTenderAmounts = [100, 500, 1000, 2000, 5000];
+  // ==================== CALCULATOR & NUMPAD ACTIONS ====================
+
+  const handleCalcDigit = (digit) => {
+    if (digit === '.' && cashTendered.includes('.')) return;
+    setCashTendered(prev => (prev === '0' && digit !== '.' ? digit : prev + digit));
+  };
+
+  const handleCalcBackspace = () => {
+    setCashTendered(prev => prev.slice(0, -1));
+  };
+
+  const handleCalcClear = () => {
+    setCashTendered('');
+  };
+
+  const handleCalcAddAmount = (amt) => {
+    const curr = Number(cashTendered) || 0;
+    setCashTendered((curr + amt).toString());
+  };
 
   // ==================== CHECKOUT SUBMISSION ====================
 
@@ -217,8 +248,12 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
       return;
     }
 
-    if (paymentMethod === 'Cash' && cashTendered && tendered < grandTotal) {
-      setError(`දුන් මුදල (${formatCurrency(tendered)}) ශුද්ධ මුදලට (${formatCurrency(grandTotal)}) වඩා අඩුය!`);
+    const effectiveTendered = paymentMethod === 'Card' 
+      ? grandTotal 
+      : (cashTendered !== '' ? Number(cashTendered) : grandTotal);
+
+    if (paymentMethod === 'Cash' && cashTendered !== '' && effectiveTendered < grandTotal) {
+      setError(`දුන් මුදල (${formatCurrency(effectiveTendered)}) ශුද්ධ මුදලට (${formatCurrency(grandTotal)}) වඩා අඩුය! තවත් ${formatCurrency(grandTotal - effectiveTendered)} ක් අවශ්‍යයි.`);
       return;
     }
 
@@ -229,18 +264,19 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
       const customerObj = customers.find(c => String(c.id) === String(selectedCustomerId));
       const doctorObj = doctors.find(d => String(d.id) === String(selectedDoctorId));
       const customerName = customCustomerName.trim() || customerObj?.name || 'Walk-in Customer';
+      const doctorName = customDoctorName.trim() || doctorObj?.name || '';
 
       const salePayload = {
         customer_id: selectedCustomerId ? String(selectedCustomerId) : null,
         doctor_id: selectedDoctorId ? String(selectedDoctorId) : null,
         customer_name: customerName,
-        doctor_name: doctorObj ? doctorObj.name : '',
+        doctor_name: doctorName,
         cashier_name: 'Cashier Staff',
-        subtotal: Number(rawSubtotal) || 0,
-        discount: Number(totalAllDiscounts) || 0,
-        total_amount: Number(grandTotal) || 0,
-        paid_amount: paymentMethod === 'Card' ? grandTotal : (tendered > 0 ? tendered : grandTotal),
-        change_amount: paymentMethod === 'Card' ? 0 : changeDue,
+        subtotal: Number(rawSubtotal.toFixed(2)) || 0,
+        discount: Number(totalAllDiscounts.toFixed(2)) || 0,
+        total_amount: Number(grandTotal.toFixed(2)) || 0,
+        paid_amount: Number(effectiveTendered.toFixed(2)),
+        change_amount: paymentMethod === 'Card' ? 0 : Math.max(0, Number((effectiveTendered - grandTotal).toFixed(2))),
         payment_method: paymentMethod,
         card_last4: paymentMethod === 'Card' ? cardLast4 : null,
         items: cart.map(item => ({
@@ -275,14 +311,14 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
         <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
           <div className="flex items-center gap-3">
             <div className="relative flex-1">
-              <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-600 dark:text-emerald-400" />
+              <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-indigo-600 dark:text-indigo-400" />
               <input
                 ref={searchInputRef}
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="ඖෂධ හෝ Grocery භාණ්ඩ සොයන්න (Search Medicine, Grocery, Barcode)..."
-                className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-semibold text-slate-800 dark:text-white transition-all placeholder:text-slate-400"
+                className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-slate-800 dark:text-white transition-all placeholder:text-slate-400"
               />
             </div>
             {searchTerm && (
@@ -303,7 +339,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                 onClick={() => setSelectedCategory(cat)}
                 className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                   selectedCategory === cat
-                    ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-600/30'
+                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
                 }`}
               >
@@ -326,6 +362,9 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
               const isOut = (med.stock_quantity || 0) <= 0;
               const isLow = !isOut && (med.stock_quantity || 0) <= (med.reorder_level || med.min_stock_alert || 10);
               const price = Number(med.selling_price || 0);
+              const isG = med.category === 'Grocery & Essentials' || 
+                          med.category === 'Personal Care & Hygiene' ||
+                          ['Pack', 'Bottle', 'Bar', 'Box', 'Piece'].includes(med.form);
 
               return (
                 <div
@@ -334,20 +373,24 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                   className={`p-4 rounded-3xl border transition-all select-none cursor-pointer group relative overflow-hidden ${
                     isOut 
                       ? 'bg-slate-100/70 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 opacity-60 cursor-not-allowed' 
-                      : 'bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 hover:border-emerald-500 hover:shadow-lg hover:shadow-emerald-500/10 active:scale-[0.98]'
+                      : 'bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-500/10 active:scale-[0.98]'
                   }`}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-extrabold text-slate-900 dark:text-white text-sm leading-tight group-hover:text-emerald-600 transition-colors truncate">
+                      <h4 className="font-extrabold text-slate-900 dark:text-white text-sm leading-tight group-hover:text-indigo-600 transition-colors truncate">
                         {med.name}
                       </h4>
                       <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
                         {med.generic_name || 'Generic'} • {med.dosage || 'General'}
                       </p>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 shrink-0">
-                      {med.category || 'Med'}
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0 ${
+                      isG 
+                        ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300' 
+                        : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300'
+                    }`}>
+                      {med.category || (isG ? 'Grocery' : 'Medicine')}
                     </span>
                   </div>
 
@@ -370,7 +413,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                         </span>
                       ) : (
                         <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                          Stock: <span className="text-emerald-600 font-extrabold">{med.stock_quantity}</span>
+                          Stock: <span className="text-indigo-600 dark:text-indigo-400 font-extrabold">{med.stock_quantity}</span>
                         </span>
                       )}
                     </div>
@@ -384,12 +427,12 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
       </div>
 
       {/* ==================== RIGHT 5 COLS: Modern Smart Cart ==================== */}
-      <div className="lg:col-span-5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xl p-5 flex flex-col sticky top-20">
+      <div className="lg:col-span-5 bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-xl p-5 flex flex-col sticky top-4">
         
         {/* Cart Header */}
         <div className="flex items-center justify-between pb-3.5 border-b border-slate-100 dark:border-slate-800">
           <div className="flex items-center gap-2.5">
-            <div className="p-2.5 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-2xl shadow-md shadow-emerald-500/20">
+            <div className="p-2.5 bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-2xl shadow-md shadow-indigo-600/20">
               <ShoppingCart className="w-5 h-5" />
             </div>
             <div>
@@ -407,38 +450,115 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
           )}
         </div>
 
-        {/* Customer & Doctor Quick Linkers */}
-        <div className="grid grid-cols-2 gap-2 pt-3 pb-2">
-          {/* Customer select / name */}
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
-              Customer (පාරිභෝගිකයා)
-            </label>
-            <input
-              type="text"
-              value={customCustomerName}
-              onChange={(e) => setCustomCustomerName(e.target.value)}
-              placeholder="Walk-in Customer"
-              className="w-full text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-            />
+        {/* ==================== CUSTOMER & DOCTOR SECTION ==================== */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-3 pb-2 border-b border-slate-100 dark:border-slate-800">
+          
+          {/* Customer Input & Selector */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <User className="w-3 h-3 text-indigo-500" />
+                Customer (පාරිභෝගිකයා)
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedCustomerId('');
+                  setCustomCustomerName('Walk-in Customer');
+                }}
+                className="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+              >
+                + Walk-in
+              </button>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <input
+                type="text"
+                value={customCustomerName}
+                onChange={(e) => {
+                  setCustomCustomerName(e.target.value);
+                  setSelectedCustomerId('');
+                }}
+                placeholder="Walk-in Customer"
+                className="flex-1 text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              {customers.length > 0 && (
+                <select
+                  value={selectedCustomerId}
+                  onChange={(e) => {
+                    const cId = e.target.value;
+                    setSelectedCustomerId(cId);
+                    if (cId) {
+                      const c = customers.find(x => String(x.id) === String(cId));
+                      if (c) setCustomCustomerName(c.name);
+                    }
+                  }}
+                  className="w-7 px-1 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  title="Select from saved customers"
+                >
+                  <option value="">▼</option>
+                  {customers.map(c => (
+                    <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>
+                  ))}
+                </select>
+              )}
+            </div>
           </div>
 
-          {/* Doctor select */}
-          <div>
-            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block mb-1">
-              Doctor (වෛද්‍යවරයා)
-            </label>
-            <select
-              value={selectedDoctorId}
-              onChange={(e) => setSelectedDoctorId(e.target.value)}
-              className="w-full text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer"
-            >
-              <option value="">No Prescription / OTC</option>
-              {doctors.map(d => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
+          {/* Doctor Input & Selector */}
+          <div className="space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <FileText className="w-3 h-3 text-sky-500" />
+                Doctor (වෛද්‍යවරයා)
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedDoctorId('');
+                  setCustomDoctorName('');
+                }}
+                className="text-[10px] font-extrabold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                Clear (OTC)
+              </button>
+            </div>
+            
+            <div className="flex items-center gap-1">
+              <input
+                type="text"
+                value={customDoctorName}
+                onChange={(e) => {
+                  setCustomDoctorName(e.target.value);
+                  setSelectedDoctorId('');
+                }}
+                placeholder="Prescribing Dr / OTC"
+                className="flex-1 text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              />
+              {doctors.length > 0 && (
+                <select
+                  value={selectedDoctorId}
+                  onChange={(e) => {
+                    const dId = e.target.value;
+                    setSelectedDoctorId(dId);
+                    if (dId) {
+                      const d = doctors.find(x => String(x.id) === String(dId));
+                      if (d) setCustomDoctorName(d.name);
+                    }
+                  }}
+                  className="w-7 px-1 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  title="Select from saved doctors"
+                >
+                  <option value="">▼</option>
+                  {doctors.map(d => (
+                    <option key={d.id} value={d.id}>{d.name} {d.slmc_reg_no ? `(${d.slmc_reg_no})` : ''}</option>
+                  ))}
+                </select>
+              )}
+            </div>
           </div>
+
         </div>
 
         {/* Error Notification */}
@@ -450,12 +570,12 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
         )}
 
         {/* Cart Items List */}
-        <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/80 my-2 pr-1 max-h-[220px] min-h-[140px]">
+        <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/80 my-2 pr-1 max-h-[220px] min-h-[120px]">
           {cart.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 py-10">
               <ShoppingCart className="w-9 h-9 stroke-1 mb-2 text-slate-300 dark:text-slate-700" />
               <p className="text-xs font-bold text-slate-500">බිල්පත හිස්ව පවතී (Cart is empty)</p>
-              <p className="text-[11px] text-slate-400">වම් පසින් ඖෂධ ක්ලික් කර එක් කරන්න</p>
+              <p className="text-[11px] text-slate-400">වම් පසින් භාණ්ඩ ක්ලික් කර එක් කරන්න</p>
             </div>
           ) : (
             cart.map((item) => (
@@ -503,9 +623,9 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                   </div>
                 </div>
 
-                {/* Individual Item Discount Controls (New Feature!) */}
-                <div className="flex items-center gap-2 bg-emerald-50/50 dark:bg-emerald-950/20 px-2 py-1 rounded-xl text-[10px]">
-                  <Tag className="w-3 h-3 text-emerald-600" />
+                {/* Individual Item Discount Controls */}
+                <div className="flex items-center gap-2 bg-indigo-50/50 dark:bg-indigo-950/20 px-2 py-1 rounded-xl text-[10px]">
+                  <Tag className="w-3 h-3 text-indigo-600" />
                   <span className="font-bold text-slate-600 dark:text-slate-300">Item Disc:</span>
                   <input
                     type="number"
@@ -518,7 +638,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                   />
                   <button
                     onClick={() => updateItemDiscount(item.medicine_id, item.discount_val, item.discount_type === 'percent' ? 'amount' : 'percent')}
-                    className="px-1.5 py-0.5 rounded-md bg-emerald-100 dark:bg-emerald-900 text-emerald-800 dark:text-emerald-200 font-bold cursor-pointer"
+                    className="px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 font-bold cursor-pointer"
                   >
                     {item.discount_type === 'percent' ? '%' : 'Rs.'}
                   </button>
@@ -545,7 +665,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
           {/* Overall Bill Extra Discount */}
           <div className="flex items-center justify-between gap-2 text-xs">
             <span className="text-slate-500 font-medium flex items-center gap-1">
-              <Percent className="w-3.5 h-3.5 text-emerald-600" />
+              <Percent className="w-3.5 h-3.5 text-indigo-600" />
               Overall Bill Discount:
             </span>
             <div className="flex items-center gap-1.5">
@@ -564,9 +684,9 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
 
           {/* Total Savings Pill (if discount applied) */}
           {totalAllDiscounts > 0 && (
-            <div className="flex items-center justify-between p-2 rounded-xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 border border-emerald-200/60 dark:border-emerald-800/60">
-              <span className="text-[11px] font-extrabold text-emerald-800 dark:text-emerald-300 flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+            <div className="flex items-center justify-between p-2 rounded-xl bg-gradient-to-r from-indigo-50 to-sky-50 dark:from-indigo-950/40 dark:to-sky-950/40 border border-indigo-200/60 dark:border-indigo-800/60">
+              <span className="text-[11px] font-extrabold text-indigo-800 dark:text-indigo-300 flex items-center gap-1">
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
                 Customer Savings (වට්ටම්):
               </span>
               <span className="text-xs font-black text-rose-600">
@@ -576,12 +696,12 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
           )}
 
           {/* NET GRAND TOTAL */}
-          <div className="flex justify-between items-center py-2 px-3 rounded-2xl bg-slate-900 text-white shadow-md">
+          <div className="flex justify-between items-center py-2.5 px-3.5 rounded-2xl bg-slate-900 text-white shadow-md border border-slate-800">
             <div>
-              <span className="text-[10px] text-emerald-300 font-bold uppercase tracking-wider block">Net Payable</span>
+              <span className="text-[10px] text-sky-400 font-extrabold uppercase tracking-wider block">Net Payable</span>
               <span className="text-base font-extrabold">ශුද්ධ මුදල</span>
             </div>
-            <span className="text-2xl font-black text-emerald-400">
+            <span className="text-2xl font-black text-sky-400 font-mono">
               {formatCurrency(grandTotal)}
             </span>
           </div>
@@ -595,7 +715,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                 onClick={() => setPaymentMethod(pm)}
                 className={`py-1.5 px-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1 transition-all cursor-pointer ${
                   paymentMethod === pm
-                    ? 'bg-emerald-600 text-white shadow-sm'
+                    ? 'bg-indigo-600 text-white shadow-sm'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
                 }`}
               >
@@ -609,13 +729,13 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
 
           {/* Card Payment Info Box (Card Mode) */}
           {paymentMethod === 'Card' && (
-            <div className="p-3 rounded-2xl bg-gradient-to-r from-emerald-50 to-teal-50 dark:from-emerald-950/40 dark:to-teal-950/40 border border-emerald-200 dark:border-emerald-800 space-y-2">
+            <div className="p-3 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 border border-blue-200 dark:border-blue-800 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
-                  <CreditCard className="w-4 h-4 text-emerald-600" />
+                <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                  <CreditCard className="w-4 h-4 text-indigo-600" />
                   Card Payment (කාඩ්පත් ගෙවීම)
                 </span>
-                <span className="text-[11px] font-extrabold text-emerald-700 dark:text-emerald-300 bg-emerald-100 dark:bg-emerald-900/60 px-2 py-0.5 rounded-lg">
+                <span className="text-[11px] font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/60 px-2 py-0.5 rounded-lg">
                   Exact: {formatCurrency(grandTotal)}
                 </span>
               </div>
@@ -629,7 +749,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                   placeholder="e.g. 4242 (Optional)"
                   value={cardLast4}
                   onChange={(e) => setCardLast4(e.target.value.replace(/\D/g, ''))}
-                  className="w-32 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono font-bold text-center text-slate-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                  className="w-32 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono font-bold text-center text-slate-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
               <p className="text-[10px] text-slate-500 dark:text-slate-400 italic">
@@ -638,52 +758,229 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
             </div>
           )}
 
-          {/* Cash Tender Input & Quick Amounts (Cash Mode Only) */}
+          {/* ==================== CASH TENDER & INTERACTIVE CALCULATOR ==================== */}
           {paymentMethod === 'Cash' && (
-            <div className="space-y-1.5 pt-1">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-slate-600 dark:text-slate-300 whitespace-nowrap">
+            <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+              
+              {/* Tender Header & Calculator Toggle */}
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                  <Banknote className="w-3.5 h-3.5 text-indigo-500" />
                   Tendered (දුන් මුදල):
                 </span>
-                <input
-                  type="number"
-                  value={cashTendered}
-                  onChange={(e) => setCashTendered(e.target.value)}
-                  placeholder={grandTotal.toString()}
-                  className="flex-1 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm font-black text-slate-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-emerald-500"
-                />
-              </div>
-
-              {/* Quick Cash Buttons */}
-              <div className="flex items-center gap-1 overflow-x-auto pb-1">
                 <button
                   type="button"
-                  onClick={() => setCashTendered(grandTotal.toString())}
-                  className="px-2 py-1 bg-emerald-100 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 text-[10px] font-black rounded-lg cursor-pointer whitespace-nowrap"
+                  onClick={() => setShowCalculator(!showCalculator)}
+                  className={`flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-xl border transition-all cursor-pointer ${
+                    showCalculator 
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' 
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-200'
+                  }`}
                 >
-                  Exact
+                  <Calculator className="w-3.5 h-3.5" />
+                  <span>{showCalculator ? 'Hide Numpad' : '🧮 POS Calculator'}</span>
                 </button>
-                {quickTenderAmounts.map((amt) => (
+              </div>
+
+              {/* Tender Input Box */}
+              <div className="relative">
+                <input
+                  type="number"
+                  step="any"
+                  value={cashTendered}
+                  onChange={(e) => setCashTendered(e.target.value)}
+                  placeholder={grandTotal > 0 ? grandTotal.toFixed(2) : "0.00"}
+                  className="w-full pl-8 pr-16 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-base font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                />
+                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                  Rs.
+                </span>
+                {cashTendered && (
+                  <button
+                    type="button"
+                    onClick={() => setCashTendered('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-bold hover:bg-rose-100 hover:text-rose-600 cursor-pointer"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+
+              {/* Quick Cash Note Denomination Buttons */}
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+                <button
+                  type="button"
+                  onClick={() => setCashTendered(grandTotal.toFixed(2))}
+                  className="px-2.5 py-1.5 bg-indigo-100 dark:bg-indigo-950/70 hover:bg-indigo-200 text-indigo-900 dark:text-indigo-200 text-[11px] font-black rounded-xl cursor-pointer whitespace-nowrap shadow-xs active:scale-95"
+                  title="Exact Cash Amount"
+                >
+                  Exact (නියම)
+                </button>
+                {[500, 1000, 2000, 5000].map((amt) => (
                   <button
                     key={amt}
                     type="button"
                     onClick={() => setCashTendered(amt.toString())}
-                    className="px-2 py-1 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-300 text-[10px] font-bold rounded-lg cursor-pointer whitespace-nowrap"
+                    className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-[11px] font-bold rounded-xl cursor-pointer whitespace-nowrap border border-slate-200 dark:border-slate-700 active:scale-95"
                   >
-                    Rs.{amt}
+                    Rs.{amt.toLocaleString()}
                   </button>
                 ))}
               </div>
 
-              {/* Change Returned */}
-              {tendered >= grandTotal && grandTotal > 0 && (
-                <div className="flex justify-between items-center px-3 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs font-black">
-                  <span className="text-slate-700 dark:text-slate-300">Change Due (ඉතිරි මුදල):</span>
-                  <span className="text-emerald-700 dark:text-emerald-300 text-sm">
-                    {formatCurrency(changeDue)}
-                  </span>
+              {/* Interactive POS Numpad Calculator (Collapsible / Toggleable) */}
+              {showCalculator && (
+                <div className="p-2.5 bg-slate-100 dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-inner animate-in fade-in zoom-in-95 duration-100 space-y-1.5">
+                  <div className="grid grid-cols-4 gap-1.5 text-xs font-bold">
+                    <button
+                      type="button"
+                      onClick={() => handleCalcDigit('7')}
+                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                    >
+                      7
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCalcDigit('8')}
+                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                    >
+                      8
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCalcDigit('9')}
+                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                    >
+                      9
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCalcAddAmount(100)}
+                      className="p-2.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded-xl font-bold shadow-xs hover:bg-indigo-100 active:scale-95"
+                    >
+                      +100
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCalcDigit('4')}
+                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                    >
+                      4
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCalcDigit('5')}
+                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                    >
+                      5
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCalcDigit('6')}
+                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                    >
+                      6
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCalcAddAmount(500)}
+                      className="p-2.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded-xl font-bold shadow-xs hover:bg-indigo-100 active:scale-95"
+                    >
+                      +500
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleCalcDigit('1')}
+                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                    >
+                      1
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCalcDigit('2')}
+                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                    >
+                      2
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCalcDigit('3')}
+                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                    >
+                      3
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCalcAddAmount(1000)}
+                      className="p-2.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded-xl font-bold shadow-xs hover:bg-indigo-100 active:scale-95"
+                    >
+                      +1000
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleCalcClear}
+                      className="p-2.5 bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 rounded-xl font-bold shadow-xs hover:bg-rose-200 active:scale-95"
+                    >
+                      C
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCalcDigit('0')}
+                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                    >
+                      0
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleCalcDigit('.')}
+                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                    >
+                      .
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCalcBackspace}
+                      className="p-2.5 bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold shadow-xs hover:bg-slate-300 active:scale-95"
+                      title="Backspace"
+                    >
+                      ⌫
+                    </button>
+                  </div>
                 </div>
               )}
+
+              {/* Real-time Change Due OR Short Amount Display */}
+              {cashTendered !== '' && (
+                <>
+                  {tendered >= grandTotal && grandTotal > 0 && (
+                    <div className="flex justify-between items-center px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 text-xs font-black shadow-xs animate-in fade-in">
+                      <span className="text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                        <Check className="w-4 h-4 text-emerald-600" />
+                        Change Due (ඉතිරි මුදල):
+                      </span>
+                      <span className="text-emerald-700 dark:text-emerald-300 text-base font-black font-mono">
+                        {formatCurrency(changeDue)}
+                      </span>
+                    </div>
+                  )}
+
+                  {tendered < grandTotal && (
+                    <div className="flex justify-between items-center px-3.5 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 text-xs font-black shadow-xs animate-in fade-in">
+                      <span className="text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                        <AlertCircle className="w-4 h-4 text-amber-600" />
+                        Short / Due (තවත් අවශ්‍යයි):
+                      </span>
+                      <span className="text-rose-600 dark:text-rose-400 text-base font-black font-mono">
+                        {formatCurrency(shortAmount)}
+                      </span>
+                    </div>
+                  )}
+                </>
+              )}
+
             </div>
           )}
 
@@ -691,7 +988,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
           <button
             onClick={handleCheckout}
             disabled={loading || cart.length === 0}
-            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-sm shadow-xl shadow-emerald-600/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
+            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white font-black text-sm shadow-xl shadow-indigo-600/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
           >
             <Printer className="w-4 h-4" />
             {loading ? 'බිල්පත නිකුත් වෙමින් පවතී...' : `බිල්පත මුද්‍රණය කරන්න (Print Bill) • ${formatCurrency(grandTotal)}`}

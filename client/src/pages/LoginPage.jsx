@@ -1,17 +1,13 @@
 import React, { useState } from 'react';
 import { 
-  HeartPulse, 
   Lock, 
   User, 
   Eye, 
   EyeOff, 
   LogIn, 
-  AlertCircle, 
-  CheckCircle2, 
-  ShieldCheck 
+  AlertCircle
 } from 'lucide-react';
 import { api } from '../api';
-import Logo from '../components/Logo';
 
 export default function LoginPage({ onLoginSuccess }) {
   const [username, setUsername] = useState('');
@@ -41,19 +37,13 @@ export default function LoginPage({ onLoginSuccess }) {
     }
   };
 
-  const handleQuickFill = (u, p) => {
-    setUsername(u);
-    setPassword(p);
-    setError('');
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-teal-950 to-slate-900 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 flex items-center justify-center p-4">
       
       {/* Background glow effects */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-40 -left-40 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-teal-500/10 rounded-full blur-3xl"></div>
+        <div className="absolute -top-40 -left-40 w-96 h-96 bg-indigo-600/15 rounded-full blur-3xl"></div>
+        <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-sky-500/15 rounded-full blur-3xl"></div>
       </div>
 
       <div className="relative w-full max-w-md bg-white/95 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 p-8 sm:p-10">
@@ -64,11 +54,11 @@ export default function LoginPage({ onLoginSuccess }) {
             <img 
               src="/pharmacy-logo.png" 
               alt="Aaush pharmacy" 
-              className="h-24 w-auto object-contain drop-shadow-md rounded-2xl"
+              className="h-24 w-auto object-contain drop-shadow-md rounded-2xl ring-1 ring-slate-200"
             />
           </div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Aaush pharmacy</h1>
-          <p className="text-xs font-black text-emerald-700 uppercase tracking-widest mt-1">
+          <p className="text-xs font-black text-sky-600 uppercase tracking-widest mt-1">
             GROCERY & HEALTH MEDI CARE
           </p>
           <p className="text-[11px] text-slate-500 font-medium mt-0.5">
@@ -101,7 +91,7 @@ export default function LoginPage({ onLoginSuccess }) {
                 placeholder="e.g. admin"
                 required
                 autoFocus
-                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-semibold text-slate-800 transition-all bg-slate-50/50 focus:bg-white"
+                className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-semibold text-slate-800 transition-all bg-slate-50/50 focus:bg-white"
               />
             </div>
           </div>
@@ -119,7 +109,7 @@ export default function LoginPage({ onLoginSuccess }) {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 text-sm font-semibold text-slate-800 transition-all bg-slate-50/50 focus:bg-white"
+                className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-600 text-sm font-semibold text-slate-800 transition-all bg-slate-50/50 focus:bg-white"
               />
               <button
                 type="button"
@@ -135,18 +125,16 @@ export default function LoginPage({ onLoginSuccess }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-extrabold text-sm shadow-lg shadow-emerald-600/30 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
+            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white font-extrabold text-sm shadow-lg shadow-indigo-600/30 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
           >
             <LogIn className="w-4 h-4" />
             {loading ? 'පද්ධතියට පිවිසෙමින්... (Signing in)' : 'ඇතුල් වන්න (Sign In)'}
           </button>
         </form>
 
-
-
         {/* Footer — Created by Nexvora Solutions */}
         <div className="text-center mt-6 pt-4 border-t border-slate-100">
-          <p className="text-[10px] text-slate-400 mb-2">LankaCare Pharmacy POS & ERP System v1.0</p>
+          <p className="text-[10px] text-slate-400 font-semibold mb-2">Aaush pharmacy - GROCERY & HEALTH MEDI CARE v2.0</p>
           <div className="flex items-center justify-center gap-2">
             <span className="text-[10px] text-slate-400 font-medium">Software Created by</span>
             <img 
