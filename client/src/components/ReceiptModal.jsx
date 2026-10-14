@@ -1,7 +1,6 @@
 import React from 'react';
-import { Printer, X, CheckCircle, ShieldCheck, Download } from 'lucide-react';
+import { Printer, X, CheckCircle, Download, Sparkles, HeartHandshake } from 'lucide-react';
 import { formatCurrency, formatDate } from '../api';
-import Logo from './Logo';
 import { pdfGenerator } from '../utils/pdfGenerator';
 
 export default function ReceiptModal({ sale, onClose }) {
@@ -10,6 +9,20 @@ export default function ReceiptModal({ sale, onClose }) {
   const handlePrint = () => {
     window.print();
   };
+
+  // Safe Number Sanitizers (Guarantees NEVER NaN)
+  const safeNum = (val) => {
+    const n = Number(val);
+    return isNaN(n) ? 0 : n;
+  };
+
+  const invoiceNo = sale.invoice_no || sale.bill_number || `INV-${Date.now().toString().slice(-6)}`;
+  const subtotal = safeNum(sale.subtotal);
+  const discountAmount = safeNum(sale.discount_amount || sale.discount);
+  const totalAmount = safeNum(sale.total_amount);
+  const paidAmount = safeNum(sale.paid_amount || sale.total_amount);
+  const changeAmount = safeNum(sale.change_amount || (paidAmount > totalAmount ? paidAmount - totalAmount : 0));
+  const taxAmount = safeNum(sale.tax_amount);
 
   const saleDate = sale.created_at ? new Date(sale.created_at) : new Date();
   const formattedDateTime = saleDate.toLocaleString('en-GB', {
@@ -22,147 +35,221 @@ export default function ReceiptModal({ sale, onClose }) {
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 overflow-y-auto">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200/80 my-8">
         
-        {/* Modal Header (Not printed) */}
-        <div className="flex items-center justify-between p-4 bg-emerald-600 text-white print:hidden">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="w-5 h-5 text-emerald-200" />
-            <h3 className="font-semibold text-lg">බිල්පත / Bill Receipt</h3>
+        {/* Modal Action Header (Not printed) */}
+        <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 text-white print:hidden">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 bg-white/20 rounded-xl backdrop-blur-xs">
+              <CheckCircle className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <h3 className="font-extrabold text-sm leading-tight">ගෙවීම් රිසිට්පත / Bill Receipt</h3>
+              <p className="text-[11px] text-emerald-100 font-medium">Payment Completed Successfully</p>
+            </div>
           </div>
           <button 
             onClick={onClose}
-            className="p-1 rounded-lg hover:bg-emerald-700 transition-colors"
+            className="p-1.5 rounded-xl hover:bg-white/20 transition-colors cursor-pointer text-white/90 hover:text-white"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Printable Area */}
-        <div id="printable-receipt" className="p-6 text-slate-800 bg-white font-mono text-xs">
+        {/* Printable Thermal Receipt Area */}
+        <div id="printable-receipt" className="p-6 text-slate-800 bg-white font-mono text-xs select-text">
           
-          {/* Pharmacy Header */}
-          <div className="text-center pb-3 border-b border-dashed border-slate-300">
-            <div className="flex justify-center mb-1">
-              <Logo size="sm" showText={false} />
+          {/* Pharmacy Header & Logo */}
+          <div className="text-center pb-3 border-b-2 border-dashed border-slate-300">
+            <div className="flex justify-center mb-2">
+              <img 
+                src="/pharmacy-logo.png" 
+                alt="LankaCare Pharmacy" 
+                className="h-14 w-auto object-contain mx-auto"
+              />
             </div>
-            <h2 className="text-base font-bold uppercase tracking-wider text-slate-900">LANKA CARE PHARMACY</h2>
-            <p className="text-[11px] text-slate-500 font-sans">රජයේ ලියාපදිංචි ඔසුසල / Reg No: PH-84920</p>
-            <p className="text-[11px] text-slate-600 font-sans mt-0.5">142, Kandy Road, Kadawatha, Sri Lanka</p>
-            <p className="text-[11px] text-slate-600 font-sans">Hotline: 011-2925840 / 077-4567890</p>
+            <h2 className="text-base font-black uppercase tracking-wider text-slate-900 font-sans">
+              LANKACARE PHARMACY
+            </h2>
+            <p className="text-[11px] font-sans font-semibold text-emerald-700">
+              රජයේ ලියාපදිංචි ඔසුසල • Reg No: PH-84920
+            </p>
+            <p className="text-[10px] text-slate-500 font-sans mt-0.5">
+              142, Kandy Road, Kadawatha, Sri Lanka
+            </p>
+            <p className="text-[10px] text-slate-500 font-sans">
+              Hotline: 011-2925840 / 077-4567890
+            </p>
           </div>
 
-          {/* Invoice Meta */}
-          <div className="py-2.5 border-b border-dashed border-slate-300 space-y-1 text-[11px]">
-            <div className="flex justify-between">
+          {/* Invoice Meta Details */}
+          <div className="py-3 border-b border-dashed border-slate-300 space-y-1.5 text-[11px]">
+            <div className="flex justify-between items-center">
               <span className="text-slate-500">Invoice No:</span>
-              <span className="font-bold text-slate-900">{sale.invoice_no}</span>
+              <span className="font-bold text-slate-900 px-2 py-0.5 bg-slate-100 rounded text-xs">
+                {invoiceNo}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-500">Date & Time:</span>
-              <span>{formattedDateTime}</span>
+              <span className="font-medium text-slate-800">{formattedDateTime}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Patient / Cust:</span>
-              <span className="font-medium text-slate-900">{sale.customer_name || 'Walk-in Customer'}</span>
+              <span className="text-slate-500">Customer:</span>
+              <span className="font-bold text-slate-900">{sale.customer_name || 'Walk-in Customer'}</span>
             </div>
             {sale.doctor_name && (
               <div className="flex justify-between">
-                <span className="text-slate-500">Prescribed By:</span>
+                <span className="text-slate-500">Prescribing Dr:</span>
                 <span className="font-medium text-slate-800">{sale.doctor_name}</span>
               </div>
             )}
             <div className="flex justify-between">
-              <span className="text-slate-500">Payment:</span>
-              <span className="font-semibold text-emerald-700">{sale.payment_method}</span>
+              <span className="text-slate-500">Cashier:</span>
+              <span className="font-medium text-slate-800">{sale.cashier_name || 'Staff'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Payment Mode:</span>
+              <span className="font-bold text-emerald-700 uppercase">{sale.payment_method || 'Cash'}</span>
             </div>
           </div>
 
-          {/* Line Items */}
-          <div className="py-3 border-b border-dashed border-slate-300">
-            <div className="flex justify-between font-bold text-[11px] pb-1 border-b border-slate-200 uppercase">
-              <span className="w-1/2">Item (Batch)</span>
-              <span className="w-1/6 text-center">Qty</span>
-              <span className="w-1/6 text-right">Price</span>
-              <span className="w-1/6 text-right">Total</span>
+          {/* Line Items Table */}
+          <div className="py-3 border-b-2 border-dashed border-slate-300">
+            <div className="flex justify-between font-bold text-[10px] pb-1.5 border-b border-slate-200 text-slate-600 uppercase tracking-wider">
+              <span className="w-5/12">Item Description</span>
+              <span className="w-2/12 text-center">Qty</span>
+              <span className="w-2/12 text-right">Price</span>
+              <span className="w-3/12 text-right">Total</span>
             </div>
+
             <div className="divide-y divide-slate-100 mt-1">
-              {(sale.items || []).map((it, idx) => (
-                <div key={idx} className="py-1.5 flex justify-between items-start text-[11px]">
-                  <div className="w-1/2 pr-1">
-                    <p className="font-bold text-slate-800 leading-tight">{it.medicine_name}</p>
-                    <p className="text-[9px] text-slate-500">{it.dosage} {it.batch_no ? `| B:${it.batch_no}` : ''}</p>
+              {(sale.items || []).map((it, idx) => {
+                const itemQty = safeNum(it.quantity || 1);
+                const itemPrice = safeNum(it.unit_price);
+                const itemDisc = safeNum(it.discount_amount || it.discount);
+                const itemTotal = safeNum(it.total_price || it.subtotal || (itemPrice * itemQty - itemDisc));
+
+                return (
+                  <div key={idx} className="py-2 flex justify-between items-start text-[11px]">
+                    <div className="w-5/12 pr-1">
+                      <p className="font-bold text-slate-900 leading-tight">{it.medicine_name}</p>
+                      <p className="text-[9px] text-slate-400 font-sans">
+                        {it.dosage ? `${it.dosage}` : ''} {it.batch_number || it.batch_no ? `| B:${it.batch_number || it.batch_no}` : ''}
+                      </p>
+                      {itemDisc > 0 && (
+                        <span className="inline-block text-[9px] font-bold text-rose-600 bg-rose-50 px-1 py-0.2 rounded mt-0.5">
+                          -Rs.{itemDisc.toFixed(2)} Off
+                        </span>
+                      )}
+                    </div>
+                    <div className="w-2/12 text-center font-bold text-slate-700">{itemQty}</div>
+                    <div className="w-2/12 text-right text-slate-600">{itemPrice.toFixed(2)}</div>
+                    <div className="w-3/12 text-right font-black text-slate-900">{itemTotal.toFixed(2)}</div>
                   </div>
-                  <div className="w-1/6 text-center font-semibold">{it.quantity}</div>
-                  <div className="w-1/6 text-right text-slate-600">{Number(it.unit_price).toFixed(2)}</div>
-                  <div className="w-1/6 text-right font-bold text-slate-900">{Number(it.subtotal).toFixed(2)}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
-          {/* Totals & Payments */}
-          <div className="py-2.5 border-b border-dashed border-slate-300 space-y-1 text-xs">
+          {/* Financial Summary & Totals */}
+          <div className="py-3 border-b-2 border-dashed border-slate-300 space-y-1.5 text-xs">
             <div className="flex justify-between text-slate-600">
-              <span>Subtotal:</span>
-              <span>{formatCurrency(sale.subtotal)}</span>
+              <span>Subtotal (දළ එකතුව):</span>
+              <span className="font-semibold">{formatCurrency(subtotal)}</span>
             </div>
-            {sale.discount_amount > 0 && (
-              <div className="flex justify-between text-rose-600 font-medium">
-                <span>Discount ({sale.discount_percent}%):</span>
-                <span>-{formatCurrency(sale.discount_amount)}</span>
+
+            {discountAmount > 0 && (
+              <div className="flex justify-between text-rose-600 font-bold bg-rose-50/70 px-2 py-1 rounded-lg">
+                <span>Total Discount (වට්ටම):</span>
+                <span>-{formatCurrency(discountAmount)}</span>
               </div>
             )}
-            {sale.tax_amount > 0 && (
+
+            {taxAmount > 0 && (
               <div className="flex justify-between text-slate-600">
-                <span>VAT / Tax:</span>
-                <span>+{formatCurrency(sale.tax_amount)}</span>
+                <span>Tax / VAT:</span>
+                <span>+{formatCurrency(taxAmount)}</span>
               </div>
             )}
-            <div className="flex justify-between font-black text-sm pt-1 border-t border-slate-200 text-slate-900">
-              <span>NET TOTAL:</span>
-              <span className="text-emerald-700">{formatCurrency(sale.total_amount)}</span>
+
+            {/* NET TOTAL */}
+            <div className="flex justify-between items-center font-black text-base pt-2 border-t border-slate-200 text-slate-900">
+              <span className="tracking-tight uppercase">Net Total (ශුද්ධ මුදල):</span>
+              <span className="text-emerald-700 text-lg font-black">{formatCurrency(totalAmount)}</span>
             </div>
-            <div className="flex justify-between text-slate-700 pt-1">
-              <span>Cash Tendered:</span>
-              <span>{formatCurrency(sale.paid_amount)}</span>
+
+            {/* CASH & CHANGE */}
+            <div className="flex justify-between text-slate-700 pt-1.5 text-[11px]">
+              <span>Cash Tendered (දුන් මුදල):</span>
+              <span className="font-semibold">{formatCurrency(paidAmount)}</span>
             </div>
-            <div className="flex justify-between font-bold text-slate-900">
-              <span>Change Due:</span>
-              <span>{formatCurrency(sale.change_amount)}</span>
+
+            <div className="flex justify-between items-center font-black text-slate-900 pt-1 text-xs">
+              <span className="text-slate-700">Change Due (ඉතිරි මුදල):</span>
+              <span className="text-emerald-800 text-sm font-black bg-emerald-50 px-2 py-0.5 rounded">
+                {formatCurrency(changeAmount)}
+              </span>
             </div>
           </div>
 
-          {/* Footer note */}
-          <div className="text-center pt-3 space-y-1 font-sans">
-            <p className="font-semibold text-emerald-800 text-[11px]">සුවපත් වේවා! ඉක්මන් සුවය පතමු!</p>
-            <p className="text-[10px] text-slate-500">Thank you for visiting! Get well soon!</p>
-            <p className="text-[9px] text-slate-400">Goods once sold cannot be returned without original receipt. Keep in cool, dry place.</p>
+          {/* You Saved Badge (if discount given) */}
+          {discountAmount > 0 && (
+            <div className="my-2.5 p-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/80 rounded-xl text-center">
+              <p className="text-[11px] font-extrabold text-emerald-800 flex items-center justify-center gap-1 font-sans">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600" />
+                ඔබ ඉතිරි කරගත් මුදල / You Saved: {formatCurrency(discountAmount)}!
+              </p>
+            </div>
+          )}
+
+          {/* Barcode Mock Visual */}
+          <div className="py-2 text-center">
+            <div className="inline-block tracking-[4px] font-mono text-[9px] text-slate-400 font-bold">
+              ||| ||||| || |||| ||||| |||| ||| |||||
+            </div>
+            <p className="text-[8px] text-slate-400 font-mono mt-0.5">{invoiceNo}</p>
+          </div>
+
+          {/* Footer Warm Note & Branding */}
+          <div className="text-center pt-2 space-y-1 font-sans">
+            <div className="flex items-center justify-center gap-1.5 text-emerald-800 font-extrabold text-xs">
+              <HeartHandshake className="w-4 h-4 text-emerald-600" />
+              <span>සුවපත් වේවා! ඉක්මන් සුවය පතමු!</span>
+            </div>
+            <p className="text-[10px] text-slate-500 font-medium">Thank you for visiting! Get well soon!</p>
+            <p className="text-[8px] text-slate-400">
+              Goods once sold cannot be returned without original receipt. Store medicines below 25°C.
+            </p>
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-center gap-1.5">
+              <span className="text-[9px] text-slate-400">Powered by</span>
+              <span className="text-[9px] font-bold text-slate-600">Nexvora Solutions</span>
+            </div>
           </div>
         </div>
 
-        {/* Modal Actions (Hidden in print) */}
+        {/* Modal Buttons (Hidden when printed) */}
         <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-wrap gap-2.5 print:hidden">
           <button
             onClick={handlePrint}
-            className="flex-1 min-w-[130px] flex items-center justify-center gap-2 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-95 cursor-pointer text-xs"
+            className="flex-1 min-w-[130px] flex items-center justify-center gap-2 py-3 px-4 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-2xl shadow-lg shadow-emerald-600/25 transition-all active:scale-95 cursor-pointer text-xs"
           >
             <Printer className="w-4 h-4" />
-            Print (මුද්‍රණය)
+            Print Bill (මුද්‍රණය)
           </button>
           <button
             onClick={() => pdfGenerator.generateBillPDF(sale)}
-            className="flex-1 min-w-[130px] flex items-center justify-center gap-2 py-2.5 px-3 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-95 cursor-pointer text-xs"
+            className="flex-1 min-w-[130px] flex items-center justify-center gap-2 py-3 px-4 bg-sky-600 hover:bg-sky-700 text-white font-extrabold rounded-2xl shadow-lg shadow-sky-600/25 transition-all active:scale-95 cursor-pointer text-xs"
           >
             <Download className="w-4 h-4" />
             Download PDF
           </button>
           <button
             onClick={onClose}
-            className="py-2.5 px-4 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold rounded-xl transition-colors cursor-pointer text-xs"
+            className="py-3 px-5 bg-slate-200 hover:bg-slate-300 text-slate-700 font-extrabold rounded-2xl transition-colors cursor-pointer text-xs"
           >
-            Close
+            Done
           </button>
         </div>
 

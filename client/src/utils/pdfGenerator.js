@@ -7,11 +7,23 @@ const fmtLKR = (num) => `Rs. ${Number(num || 0).toLocaleString('en-LK', { minimu
 export const pdfGenerator = {
   // 1. GENERATE POS BILL / RECEIPT PDF
   generateBillPDF: (sale) => {
+    const safeNum = (v) => {
+      const n = Number(v);
+      return isNaN(n) ? 0 : n;
+    };
+
     const doc = new jsPDF({
       orientation: 'portrait',
       unit: 'mm',
       format: [80, 160] // Standard 80mm thermal receipt format
     });
+
+    const invoiceNo = sale.invoice_no || sale.bill_number || `INV-${Date.now().toString().slice(-6)}`;
+    const subtotal = safeNum(sale.subtotal);
+    const discountAmount = safeNum(sale.discount_amount || sale.discount);
+    const totalAmount = safeNum(sale.total_amount);
+    const paidAmount = safeNum(sale.paid_amount || sale.total_amount);
+    const changeAmount = safeNum(sale.change_amount || (paidAmount > totalAmount ? paidAmount - totalAmount : 0));
 
     // Pharmacy Header
     doc.setFont('helvetica', 'bold');
@@ -34,24 +46,31 @@ export const pdfGenerator = {
     doc.setFontSize(7.5);
     doc.setTextColor(40, 40, 40);
     doc.setFont('helvetica', 'bold');
-    doc.text(`INVOICE: ${sale.invoice_no}`, 5, 23);
+    doc.text(`INVOICE: ${invoiceNo}`, 5, 23);
     doc.setFont('helvetica', 'normal');
     doc.text(`Date: ${new Date(sale.created_at || Date.now()).toLocaleString('en-GB')}`, 5, 27);
     doc.text(`Patient: ${sale.customer_name || 'Walk-in Customer'}`, 5, 31);
     if (sale.doctor_name) {
       doc.text(`Doctor: ${sale.doctor_name}`, 5, 35);
     }
-    doc.text(`Payment: ${sale.payment_method}`, 5, sale.doctor_name ? 39 : 35);
+    doc.text(`Payment: ${sale.payment_method || 'Cash'}`, 5, sale.doctor_name ? 39 : 35);
 
     const startTableY = sale.doctor_name ? 42 : 38;
 
     // Items Table
-    const tableRows = (sale.items || []).map((it) => [
-      `${it.medicine_name}\n${it.batch_no ? `B:${it.batch_no}` : ''}`,
-      it.quantity,
-      Number(it.unit_price).toFixed(2),
-      Number(it.subtotal).toFixed(2)
-    ]);
+    const tableRows = (sale.items || []).map((it) => {
+      const itQty = safeNum(it.quantity || 1);
+      const itPrice = safeNum(it.unit_price);
+      const itDisc = safeNum(it.discount_amount || it.discount);
+      const itTotal = safeNum(it.total_price || it.subtotal || (itPrice * itQty - itDisc));
+
+      return [
+        `${it.medicine_name}\n${it.batch_no || it.batch_number ? `B:${it.batch_no || it.batch_number}` : ''}`,
+        itQty,
+        itPrice.toFixed(2),
+        itTotal.toFixed(2)
+      ];
+    });
 
     autoTable(doc, {
       startY: startTableY,
@@ -86,13 +105,13 @@ export const pdfGenerator = {
     let currY = finalY + 4;
     doc.setFontSize(7.5);
     doc.text('Subtotal:', 40, currY);
-    doc.text(fmtLKR(sale.subtotal), 76, currY, { align: 'right' });
+    doc.text(fmtLKR(subtotal), 76, currY, { align: 'right' });
 
-    if (sale.discount_amount > 0) {
+    if (discountAmount > 0) {
       currY += 3.5;
       doc.setTextColor(200, 0, 0);
-      doc.text(`Discount (${sale.discount_percent}%):`, 40, currY);
-      doc.text(`-${fmtLKR(sale.discount_amount)}`, 76, currY, { align: 'right' });
+      doc.text(`Discount:`, 40, currY);
+      doc.text(`-${fmtLKR(discountAmount)}`, 76, currY, { align: 'right' });
       doc.setTextColor(40, 40, 40);
     }
 
@@ -101,18 +120,18 @@ export const pdfGenerator = {
     doc.setFontSize(8.5);
     doc.setTextColor(16, 120, 80);
     doc.text('NET TOTAL:', 40, currY);
-    doc.text(fmtLKR(sale.total_amount), 76, currY, { align: 'right' });
+    doc.text(fmtLKR(totalAmount), 76, currY, { align: 'right' });
 
     currY += 4;
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7.5);
     doc.setTextColor(60, 60, 60);
     doc.text('Tendered:', 40, currY);
-    doc.text(fmtLKR(sale.paid_amount), 76, currY, { align: 'right' });
+    doc.text(fmtLKR(paidAmount), 76, currY, { align: 'right' });
 
     currY += 3.5;
     doc.text('Change:', 40, currY);
-    doc.text(fmtLKR(sale.change_amount), 76, currY, { align: 'right' });
+    doc.text(fmtLKR(changeAmount), 76, currY, { align: 'right' });
 
     // Footer blessing
     currY += 7;
@@ -127,7 +146,7 @@ export const pdfGenerator = {
     doc.text('Goods once sold cannot be returned without bill.', 40, currY + 3.5, { align: 'center' });
 
     // Save PDF
-    doc.save(`${sale.invoice_no}.pdf`);
+    doc.save(`${invoiceNo}.pdf`);
   },
 
   // 2. GENERATE SALES & PROFIT REPORT PDF
