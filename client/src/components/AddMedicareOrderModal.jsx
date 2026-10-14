@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   X, 
   Activity, 
@@ -81,10 +81,22 @@ export default function AddMedicareOrderModal({
   const [discount, setDiscount] = useState(0);
   const [paidAmount, setPaidAmount] = useState('');
 
-  // Catalog filtering
+  // Catalog filtering & live dynamic tests
+  const [catalogList, setCatalogList] = useState(MEDICARE_CATALOG);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    api.getMedicareCatalog()
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setCatalogList(data);
+        }
+      })
+      .catch(() => {});
+  }, [isOpen]);
 
   // Auto-calculated totals
   const subtotal = useMemo(() => {
@@ -112,14 +124,14 @@ export default function AddMedicareOrderModal({
   const categories = ['All', 'Blood Test', 'ECG & Cardiac', 'Clinical Medicare', 'Urine & Other'];
 
   const filteredCatalog = useMemo(() => {
-    return MEDICARE_CATALOG.filter(item => {
+    return catalogList.filter(item => {
       const matchCat = activeCategory === 'All' || item.category === activeCategory;
       const matchQuery = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          item.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (item.sample_type && item.sample_type.toLowerCase().includes(searchQuery.toLowerCase()));
       return matchCat && matchQuery;
     });
-  }, [searchQuery, activeCategory]);
+  }, [catalogList, searchQuery, activeCategory]);
 
   const toggleTest = (testItem) => {
     setSelectedTests(prev => {
@@ -128,8 +140,9 @@ export default function AddMedicareOrderModal({
         return prev.filter(t => t.id !== testItem.id);
       } else {
         // If adding a test with recommended fasting, auto update fasting status if still Not Required
-        if (testItem.defaultFasting && testItem.defaultFasting.includes('Fasting') && fastingStatus === 'Not Required') {
-          setFastingStatus(testItem.defaultFasting);
+        const fastingInfo = testItem.default_fasting || testItem.defaultFasting || '';
+        if (fastingInfo.includes('Fasting') && fastingStatus === 'Not Required') {
+          setFastingStatus(fastingInfo);
         }
         return [...prev, {
           id: testItem.id,

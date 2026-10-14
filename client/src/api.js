@@ -148,6 +148,22 @@ export const api = {
     method: 'DELETE'
   }),
 
+  // Medicare & Blood Test Catalog (Price Index)
+  getMedicareCatalog: () => safeFetch(`${API_BASE}/medicare/catalog`).catch(() => []),
+  createMedicareCatalogItem: (data) => safeFetch(`${API_BASE}/medicare/catalog`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }),
+  updateMedicareCatalogItem: (id, data) => safeFetch(`${API_BASE}/medicare/catalog/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }),
+  deleteMedicareCatalogItem: (id) => safeFetch(`${API_BASE}/medicare/catalog/${id}`, {
+    method: 'DELETE'
+  }),
+
   // Photocopy, Printing & Mobile Reloads
   getReloadOrders: () => safeFetch(`${API_BASE}/reloads`).catch(() => []),
   createReloadOrder: (data) => safeFetch(`${API_BASE}/reloads`, {

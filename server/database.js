@@ -179,6 +179,16 @@ export function initDatabase() {
       operator TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS medicare_catalog (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      category TEXT DEFAULT 'Blood Test',
+      sample_type TEXT DEFAULT 'Blood',
+      price REAL NOT NULL,
+      default_fasting TEXT DEFAULT 'Not Required',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   // Seed default users if not present
@@ -189,7 +199,55 @@ export function initDatabase() {
     insertUser.run('cashier', 'cashier123', 'Counter Cashier', 'Cashier');
   }
 
+  // Seed default medicare catalog if not present
+  const catalogCount = db.prepare('SELECT COUNT(*) as count FROM medicare_catalog').get().count;
+  if (catalogCount === 0) {
+    seedMedicareCatalog();
+  }
+
   seedInitialData();
+}
+
+function seedMedicareCatalog() {
+  const insertTest = db.prepare(`
+    INSERT INTO medicare_catalog (name, category, sample_type, price, default_fasting)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+
+  const initialTests = [
+    ['Fasting Blood Sugar (FBS)', 'Blood Test', 'Fluoride Plasma', 250, 'Fasting (10-12 hrs)'],
+    ['Random Blood Sugar (RBS)', 'Blood Test', 'Capillary / Plasma', 200, 'Non-Fasting'],
+    ['Post-Prandial Blood Sugar (PPBS)', 'Blood Test', 'Fluoride Plasma', 250, '2 hrs Post-Meal'],
+    ['Full Blood Count (FBC / CBC)', 'Blood Test', 'EDTA Blood', 650, 'Not Required'],
+    ['HbA1c (Glycated Hemoglobin)', 'Blood Test', 'EDTA Blood', 1600, 'Not Required'],
+    ['Lipid Profile (Cholesterol, HDL, LDL, Trig)', 'Blood Test', 'Serum', 1800, 'Fasting (12 hrs)'],
+    ['Serum Creatinine & eGFR (Kidney)', 'Blood Test', 'Serum', 650, 'Not Required'],
+    ['Liver Function Test (LFT Panel)', 'Blood Test', 'Serum', 2400, 'Fasting Preferred'],
+    ['Serum Uric Acid', 'Blood Test', 'Serum', 600, 'Not Required'],
+    ['Serum Electrolytes (Na, K, Cl)', 'Blood Test', 'Serum', 1200, 'Not Required'],
+    ['Dengue NS1 Antigen Rapid', 'Blood Test', 'Whole Blood', 1500, 'Not Required'],
+    ['Dengue IgG / IgM Antibody', 'Blood Test', 'Serum', 1600, 'Not Required'],
+    ['ESR (Erythrocyte Sedimentation)', 'Blood Test', 'Citrate Blood', 350, 'Not Required'],
+    ['Blood Grouping & Rh Factor', 'Blood Test', 'EDTA Blood', 500, 'Not Required'],
+    ['TSH (Thyroid Stimulating Hormone)', 'Blood Test', 'Serum', 1200, 'Not Required'],
+    ['Thyroid Panel (Free T4 & TSH)', 'Blood Test', 'Serum', 2200, 'Not Required'],
+    ['Urine Full Report (UFR)', 'Urine & Other', 'Midstream Urine', 400, 'Not Required'],
+    ['Urine hCG (Pregnancy Screen)', 'Urine & Other', 'Morning Urine', 350, 'Not Required'],
+    ['12-Lead ECG with Doctor Report', 'ECG & Cardiac', 'Clinical Procedure', 850, 'Not Required'],
+    ['Rhythm Strip ECG Monitoring', 'ECG & Cardiac', 'Clinical Procedure', 500, 'Not Required'],
+    ['Digital Blood Pressure & Pulse Check', 'Clinical Medicare', 'Clinical Check', 100, 'Not Required'],
+    ['Quick Glucometer Blood Sugar Check', 'Clinical Medicare', 'Capillary Blood', 150, 'Not Required'],
+    ['Clinical Nebulization (Adult / Child)', 'Clinical Medicare', 'Nursing Care', 450, 'Not Required'],
+    ['Minor Wound Dressing & Antiseptic Care', 'Clinical Medicare', 'Nursing Care', 400, 'Not Required'],
+    ['Major Wound Dressing & Bandaging', 'Clinical Medicare', 'Nursing Care', 750, 'Not Required'],
+    ['IM / Subcutaneous Injection Admin', 'Clinical Medicare', 'Nursing Care', 250, 'Not Required'],
+    ['IV Cannula Setup & Saline Infusion', 'Clinical Medicare', 'Nursing Care', 1200, 'Not Required'],
+    ['Suture / Stitch Removal Care', 'Clinical Medicare', 'Nursing Care', 500, 'Not Required']
+  ];
+
+  for (const t of initialTests) {
+    insertTest.run(t[0], t[1], t[2], t[3], t[4]);
+  }
 }
 
 function seedInitialData() {

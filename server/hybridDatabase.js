@@ -14,7 +14,7 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 import mongoose from 'mongoose';
 import sqliteDb, { initDatabase as initSqlite } from './database.js';
 import { connectMongoDB } from './mongoDatabase.js';
-import { User, Category, Supplier, Medicine, Customer, Doctor, Sale, DealerPurchase, MedicareOrder, ReloadOrder } from './models.js';
+import { User, Category, Supplier, Medicine, Customer, Doctor, Sale, DealerPurchase, MedicareOrder, ReloadOrder, MedicareCatalog } from './models.js';
 
 let currentMode = 'offline'; // 'online' | 'offline'
 
@@ -880,6 +880,106 @@ export async function deleteMedicareOrder(id) {
     await MedicareOrder.findByIdAndDelete(id);
   }
   sqliteDb.prepare('DELETE FROM medicare_orders WHERE id = ? OR order_number = ?').run(Number(id) || 0, id);
+  return { success: true };
+}
+
+// ==================== MEDICARE CATALOG (TESTS & PRICING) ====================
+
+export async function getAllMedicareCatalog() {
+  if (currentMode === 'online') {
+    let items = await MedicareCatalog.find().sort({ category: 1, name: 1 });
+    if (items.length === 0) {
+      const defaultTests = [
+        { name: 'Fasting Blood Sugar (FBS)', category: 'Blood Test', sample_type: 'Fluoride Plasma', price: 250, default_fasting: 'Fasting (10-12 hrs)' },
+        { name: 'Random Blood Sugar (RBS)', category: 'Blood Test', sample_type: 'Capillary / Plasma', price: 200, default_fasting: 'Non-Fasting' },
+        { name: 'Post-Prandial Blood Sugar (PPBS)', category: 'Blood Test', sample_type: 'Fluoride Plasma', price: 250, default_fasting: '2 hrs Post-Meal' },
+        { name: 'Full Blood Count (FBC / CBC)', category: 'Blood Test', sample_type: 'EDTA Blood', price: 650, default_fasting: 'Not Required' },
+        { name: 'HbA1c (Glycated Hemoglobin)', category: 'Blood Test', sample_type: 'EDTA Blood', price: 1600, default_fasting: 'Not Required' },
+        { name: 'Lipid Profile (Cholesterol, HDL, LDL, Trig)', category: 'Blood Test', sample_type: 'Serum', price: 1800, default_fasting: 'Fasting (12 hrs)' },
+        { name: 'Serum Creatinine & eGFR (Kidney)', category: 'Blood Test', sample_type: 'Serum', price: 650, default_fasting: 'Not Required' },
+        { name: 'Liver Function Test (LFT Panel)', category: 'Blood Test', sample_type: 'Serum', price: 2400, default_fasting: 'Fasting Preferred' },
+        { name: 'Serum Uric Acid', category: 'Blood Test', sample_type: 'Serum', price: 600, default_fasting: 'Not Required' },
+        { name: 'Serum Electrolytes (Na, K, Cl)', category: 'Blood Test', sample_type: 'Serum', price: 1200, default_fasting: 'Not Required' },
+        { name: 'Dengue NS1 Antigen Rapid', category: 'Blood Test', sample_type: 'Whole Blood', price: 1500, default_fasting: 'Not Required' },
+        { name: 'Dengue IgG / IgM Antibody', category: 'Blood Test', sample_type: 'Serum', price: 1600, default_fasting: 'Not Required' },
+        { name: 'ESR (Erythrocyte Sedimentation)', category: 'Blood Test', sample_type: 'Citrate Blood', price: 350, default_fasting: 'Not Required' },
+        { name: 'Blood Grouping & Rh Factor', category: 'Blood Test', sample_type: 'EDTA Blood', price: 500, default_fasting: 'Not Required' },
+        { name: 'TSH (Thyroid Stimulating Hormone)', category: 'Blood Test', sample_type: 'Serum', price: 1200, default_fasting: 'Not Required' },
+        { name: 'Thyroid Panel (Free T4 & TSH)', category: 'Blood Test', sample_type: 'Serum', price: 2200, default_fasting: 'Not Required' },
+        { name: 'Urine Full Report (UFR)', category: 'Urine & Other', sample_type: 'Midstream Urine', price: 400, default_fasting: 'Not Required' },
+        { name: 'Urine hCG (Pregnancy Screen)', category: 'Urine & Other', sample_type: 'Morning Urine', price: 350, default_fasting: 'Not Required' },
+        { name: '12-Lead ECG with Doctor Report', category: 'ECG & Cardiac', sample_type: 'Clinical Procedure', price: 850, default_fasting: 'Not Required' },
+        { name: 'Rhythm Strip ECG Monitoring', category: 'ECG & Cardiac', sample_type: 'Clinical Procedure', price: 500, default_fasting: 'Not Required' },
+        { name: 'Digital Blood Pressure & Pulse Check', category: 'Clinical Medicare', sample_type: 'Clinical Check', price: 100, default_fasting: 'Not Required' },
+        { name: 'Quick Glucometer Blood Sugar Check', category: 'Clinical Medicare', sample_type: 'Capillary Blood', price: 150, default_fasting: 'Not Required' },
+        { name: 'Clinical Nebulization (Adult / Child)', category: 'Clinical Medicare', sample_type: 'Nursing Care', price: 450, default_fasting: 'Not Required' },
+        { name: 'Minor Wound Dressing & Antiseptic Care', category: 'Clinical Medicare', sample_type: 'Nursing Care', price: 400, default_fasting: 'Not Required' },
+        { name: 'Major Wound Dressing & Bandaging', category: 'Clinical Medicare', sample_type: 'Nursing Care', price: 750, default_fasting: 'Not Required' },
+        { name: 'IM / Subcutaneous Injection Admin', category: 'Clinical Medicare', sample_type: 'Nursing Care', price: 250, default_fasting: 'Not Required' },
+        { name: 'IV Cannula Setup & Saline Infusion', category: 'Clinical Medicare', sample_type: 'Nursing Care', price: 1200, default_fasting: 'Not Required' },
+        { name: 'Suture / Stitch Removal Care', category: 'Clinical Medicare', sample_type: 'Nursing Care', price: 500, default_fasting: 'Not Required' }
+      ];
+      await MedicareCatalog.insertMany(defaultTests);
+      items = await MedicareCatalog.find().sort({ category: 1, name: 1 });
+    }
+    return items.map(i => ({ id: i._id, ...i.toObject() }));
+  } else {
+    return sqliteDb.prepare('SELECT * FROM medicare_catalog ORDER BY category, name ASC').all();
+  }
+}
+
+export async function createMedicareCatalogItem(data) {
+  const itemData = {
+    name: data.name,
+    category: data.category || 'Blood Test',
+    sample_type: data.sample_type || 'Blood',
+    price: Number(data.price) || 0,
+    default_fasting: data.default_fasting || 'Not Required'
+  };
+
+  const sqliteStmt = sqliteDb.prepare(`
+    INSERT INTO medicare_catalog (name, category, sample_type, price, default_fasting)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+  const info = sqliteStmt.run(itemData.name, itemData.category, itemData.sample_type, itemData.price, itemData.default_fasting);
+
+  if (currentMode === 'online') {
+    const item = await MedicareCatalog.create(itemData);
+    return { id: item._id, ...item.toObject() };
+  } else {
+    return { id: info.lastInsertRowid, ...itemData };
+  }
+}
+
+export async function updateMedicareCatalogItem(id, data) {
+  const itemData = {
+    name: data.name,
+    category: data.category || 'Blood Test',
+    sample_type: data.sample_type || 'Blood',
+    price: Number(data.price) || 0,
+    default_fasting: data.default_fasting || 'Not Required'
+  };
+
+  sqliteDb.prepare(`
+    UPDATE medicare_catalog 
+    SET name = ?, category = ?, sample_type = ?, price = ?, default_fasting = ?
+    WHERE id = ?
+  `).run(itemData.name, itemData.category, itemData.sample_type, itemData.price, itemData.default_fasting, Number(id) || 0);
+
+  if (currentMode === 'online' && mongoose.Types.ObjectId.isValid(id)) {
+    const updated = await MedicareCatalog.findByIdAndUpdate(id, itemData, { new: true });
+    if (updated) return { id: updated._id, ...updated.toObject() };
+  }
+
+  const row = sqliteDb.prepare('SELECT * FROM medicare_catalog WHERE id = ?').get(Number(id) || 0);
+  return row || { id, ...itemData };
+}
+
+export async function deleteMedicareCatalogItem(id) {
+  if (currentMode === 'online' && mongoose.Types.ObjectId.isValid(id)) {
+    await MedicareCatalog.findByIdAndDelete(id);
+  }
+  sqliteDb.prepare('DELETE FROM medicare_catalog WHERE id = ?').run(Number(id) || 0);
   return { success: true };
 }
 

@@ -155,3 +155,13 @@ const ReloadOrderSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 export const ReloadOrder = mongoose.model('ReloadOrder', ReloadOrderSchema);
+
+const MedicareCatalogSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  category: { type: String, default: 'Blood Test' },
+  sample_type: { type: String, default: 'Blood' },
+  price: { type: Number, required: true },
+  default_fasting: { type: String, default: 'Not Required' }
+}, { timestamps: true });
+
+export const MedicareCatalog = mongoose.model('MedicareCatalog', MedicareCatalogSchema);

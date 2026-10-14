@@ -24,6 +24,7 @@ import { api, formatCurrency, formatDate } from '../api';
 import { pdfGenerator } from '../utils/pdfGenerator';
 import AddMedicareOrderModal, { MEDICARE_CATALOG } from '../components/AddMedicareOrderModal';
 import MedicareTokenModal from '../components/MedicareTokenModal';
+import MedicareCatalogModal from '../components/MedicareCatalogModal';
 
 export default function MedicareServices({ customers = [], doctors = [], t = {}, currentUser, isCashier = false }) {
   const [orders, setOrders] = useState([]);
@@ -460,66 +461,14 @@ export default function MedicareServices({ customers = [], doctors = [], t = {},
         </div>
       </div>
 
-      {/* Catalog Quick Reference Modal */}
+      {/* Dynamic Medicare Catalog Modal (Price Index with Admin CRUD) */}
       {isCatalogOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 rounded-3xl shadow-2xl max-w-2xl w-full p-6 border border-slate-200 dark:border-slate-800 max-h-[90vh] flex flex-col">
-            
-            <div className="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-sky-100 dark:bg-sky-950/60 rounded-xl text-sky-600">
-                  <Droplet className="w-5 h-5 text-rose-500" />
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
-                    Aaush Medicare & Diagnostics Catalog
-                  </h3>
-                  <p className="text-xs text-slate-500">Standard Test Fees & Sample Requirements</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setIsCatalogOpen(false)}
-                className="p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="overflow-y-auto flex-1 py-4 space-y-2">
-              {MEDICARE_CATALOG.map((item, idx) => (
-                <div 
-                  key={idx}
-                  className="flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700/60 text-xs"
-                >
-                  <div>
-                    <div className="font-bold text-slate-900 dark:text-white">{item.name}</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-                      {item.category} • Sample: <span className="font-medium text-slate-700 dark:text-slate-300">{item.sample_type}</span>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="font-mono font-black text-sky-600 dark:text-sky-400 text-sm">
-                      {formatCurrency(item.price)}
-                    </div>
-                    <div className="text-[10px] text-amber-600 font-medium">
-                      {item.defaultFasting}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-3 border-t border-slate-200 dark:border-slate-800 flex justify-end">
-              <button
-                onClick={() => setIsCatalogOpen(false)}
-                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-200 cursor-pointer"
-              >
-                වසන්න (Close)
-              </button>
-            </div>
-
-          </div>
-        </div>
+        <MedicareCatalogModal
+          isOpen={isCatalogOpen}
+          onClose={() => setIsCatalogOpen(false)}
+          isCashier={isCashier}
+          onCatalogUpdated={loadOrders}
+        />
       )}
 
       {/* Add Medicare Order Modal */}

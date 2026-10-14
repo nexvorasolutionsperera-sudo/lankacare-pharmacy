@@ -30,6 +30,10 @@ import {
   createMedicareOrder,
   updateMedicareOrder,
   deleteMedicareOrder,
+  getAllMedicareCatalog,
+  createMedicareCatalogItem,
+  updateMedicareCatalogItem,
+  deleteMedicareCatalogItem,
   getAllReloadOrders,
   createReloadOrder,
   deleteReloadOrder
@@ -357,6 +361,44 @@ app.put('/api/medicare/:id', async (req, res) => {
 app.delete('/api/medicare/:id', async (req, res) => {
   try {
     await deleteMedicareOrder(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== MEDICARE CATALOG (TESTS & PRICING) ====================
+app.get('/api/medicare/catalog', async (req, res) => {
+  try {
+    const catalog = await getAllMedicareCatalog();
+    res.json(catalog);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/medicare/catalog', async (req, res) => {
+  try {
+    const item = await createMedicareCatalogItem(req.body);
+    res.status(201).json(item);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/medicare/catalog/:id', async (req, res) => {
+  try {
+    const item = await updateMedicareCatalogItem(req.params.id, req.body);
+    if (!item) return res.status(404).json({ error: 'Item not found' });
+    res.json(item);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/medicare/catalog/:id', async (req, res) => {
+  try {
+    await deleteMedicareCatalogItem(req.params.id);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
