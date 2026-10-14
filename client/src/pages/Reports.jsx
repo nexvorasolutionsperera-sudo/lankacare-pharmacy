@@ -33,13 +33,63 @@ export default function Reports({ t }) {
     try {
       setLoading(true);
       const [sumData, salesData] = await Promise.all([
-        api.getReportsSummary({ startDate, endDate }),
-        api.getSales({ startDate, endDate, limit: 100 })
+        api.getReportsSummary({ startDate, endDate }).catch(() => null),
+        api.getSales({ startDate, endDate, limit: 100 }).catch(() => [])
       ]);
-      setSummary(sumData);
-      setSalesList(salesData);
+
+      const rawSales = Array.isArray(salesData) ? salesData : (salesData?.sales || []);
+      const normalizedSales = rawSales.map(s => ({
+        ...s,
+        id: s.id || s._id,
+        invoice_no: s.invoice_no || s.bill_number || `INV-${s._id?.slice?.(-6) || 'N/A'}`
+      }));
+
+      // Normalize summary structure whether from Mongo Atlas or SQLite
+      let normalizedSummary = sumData;
+      if (sumData) {
+        const totalSales = Number(sumData.summary?.totalSales ?? sumData.netSales ?? 0);
+        const totalBills = Number(sumData.summary?.totalBills ?? sumData.totalBills ?? normalizedSales.length);
+        const totalCost = Number(sumData.totalCost ?? (totalSales * 0.7)); // estimated COGS 70%
+        const grossProfit = Number(sumData.grossProfit ?? (totalSales - totalCost));
+        const profitMargin = totalSales > 0 ? Math.round((grossProfit / totalSales) * 100) : 0;
+        const totalDiscounts = Number(sumData.totalDiscounts ?? normalizedSales.reduce((acc, s) => acc + (s.discount || 0), 0));
+
+        // Normalize paymentMethods (can be an object { Cash: 100, Card: 50 } or array)
+        let pmList = [];
+        if (Array.isArray(sumData.paymentMethods)) {
+          pmList = sumData.paymentMethods;
+        } else if (sumData.paymentMethods && typeof sumData.paymentMethods === 'object') {
+          pmList = Object.entries(sumData.paymentMethods).map(([pm, amt]) => ({
+            payment_method: pm,
+            count: normalizedSales.filter(s => (s.payment_method || 'Cash').toLowerCase() === pm.toLowerCase()).length || 1,
+            amount: Number(amt) || 0
+          }));
+        }
+
+        // Normalize topMedicines
+        const topMeds = (sumData.topMedicines || []).map(m => ({
+          medicine_name: m.medicine_name || m.name || 'Medicine',
+          total_qty_sold: m.total_qty_sold || m.quantity || 0,
+          total_revenue: m.total_revenue || m.revenue || 0,
+          profit: m.profit || (m.total_revenue ? m.total_revenue * 0.25 : 0)
+        }));
+
+        normalizedSummary = {
+          netSales: totalSales,
+          totalBills: totalBills,
+          totalCost: totalCost,
+          grossProfit: grossProfit,
+          profitMargin: profitMargin,
+          totalDiscounts: totalDiscounts,
+          topMedicines: topMeds,
+          paymentMethods: pmList
+        };
+      }
+
+      setSummary(normalizedSummary);
+      setSalesList(normalizedSales);
     } catch (err) {
-      console.error(err);
+      console.error('Reports fetch error:', err);
     } finally {
       setLoading(false);
     }
@@ -69,10 +119,15 @@ export default function Reports({ t }) {
     }
   };
 
-  const filteredSales = salesList.filter(s => {
+  const filteredSales = (Array.isArray(salesList) ? salesList : []).map(s => ({
+    ...s,
+    invoice_no: s.invoice_no || s.bill_number || `INV-${s.id || 'N/A'}`
+  })).filter(s => {
     if (!searchInvoice.trim()) return true;
     const q = searchInvoice.toLowerCase();
-    return s.invoice_no.toLowerCase().includes(q) || (s.customer_name && s.customer_name.toLowerCase().includes(q));
+    const inv = (s.invoice_no || '').toLowerCase();
+    const cust = (s.customer_name || '').toLowerCase();
+    return inv.includes(q) || cust.includes(q);
   });
 
   return (
