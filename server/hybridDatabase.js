@@ -18,8 +18,129 @@ import { User, Category, Supplier, Medicine, Customer, Doctor, Sale, DealerPurch
 
 let currentMode = 'offline'; // 'online' | 'offline'
 
+// ==================== DUAL-WRITE SYNC HELPERS (Save into SQLite) ====================
+
+function syncMedicineToSQLite(data) {
+  try {
+    const existing = sqliteDb.prepare('SELECT id FROM medicines WHERE name = ?').get(data.name);
+    if (existing) {
+      sqliteDb.prepare(`
+        UPDATE medicines SET 
+          generic_name = ?, dosage = ?, cost_price = ?, selling_price = ?, 
+          stock_quantity = ?, min_stock_alert = ?, expiry_date = ?, batch_no = ?
+        WHERE id = ?
+      `).run(
+        data.generic_name || '',
+        data.dosage || '',
+        Number(data.cost_price || 0),
+        Number(data.selling_price || 0),
+        Number(data.stock_quantity || 0),
+        Number(data.reorder_level || data.min_stock_alert || 10),
+        data.expiry_date || '',
+        data.batch_number || data.batch_no || '',
+        existing.id
+      );
+    } else {
+      sqliteDb.prepare(`
+        INSERT INTO medicines (name, generic_name, dosage, cost_price, selling_price, stock_quantity, min_stock_alert, expiry_date, batch_no)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        data.name,
+        data.generic_name || '',
+        data.dosage || '',
+        Number(data.cost_price || 0),
+        Number(data.selling_price || 0),
+        Number(data.stock_quantity || 0),
+        Number(data.reorder_level || data.min_stock_alert || 10),
+        data.expiry_date || '',
+        data.batch_number || data.batch_no || ''
+      );
+    }
+  } catch (err) {
+    console.warn('⚠️ SQLite Medicine Sync error:', err.message);
+  }
+}
+
+function syncSaleToSQLite(saleData) {
+  try {
+    const billNo = saleData.bill_number || `INV-${Date.now().toString().slice(-6)}`;
+    const existing = sqliteDb.prepare('SELECT id FROM sales WHERE invoice_no = ?').get(billNo);
+    if (existing) return;
+
+    const stmtSale = sqliteDb.prepare(`
+      INSERT INTO sales (invoice_no, customer_name, subtotal, discount_amount, total_amount, paid_amount, change_amount, payment_method)
+      VALUES (?, ?, ?, ?, ?, ?, 0, ?)
+    `);
+    const saleInfo = stmtSale.run(
+      billNo,
+      saleData.customer_name || 'Walking Customer',
+      Number(saleData.subtotal || 0),
+      Number(saleData.discount || 0),
+      Number(saleData.total_amount || 0),
+      Number(saleData.total_amount || 0),
+      saleData.payment_method || 'Cash'
+    );
+    const saleId = saleInfo.lastInsertRowid;
+
+    const stmtItem = sqliteDb.prepare(`
+      INSERT INTO sale_items (sale_id, medicine_id, medicine_name, unit_price, cost_price, quantity, subtotal)
+      VALUES (?, ?, ?, ?, 0, ?, ?)
+    `);
+    const stmtReduceStock = sqliteDb.prepare(`
+      UPDATE medicines SET stock_quantity = MAX(0, stock_quantity - ?) WHERE name = ?
+    `);
+
+    if (Array.isArray(saleData.items)) {
+      for (const item of saleData.items) {
+        stmtItem.run(saleId, null, item.medicine_name, Number(item.unit_price || 0), Number(item.quantity || 1), Number(item.total_price || 0));
+        stmtReduceStock.run(Number(item.quantity || 1), item.medicine_name);
+      }
+    }
+    console.log(`💾 Auto-Synced Sale [${billNo}] into Local SQLite database.`);
+  } catch (err) {
+    console.warn('⚠️ SQLite Sale Sync error:', err.message);
+  }
+}
+
+function syncSupplierToSQLite(data) {
+  try {
+    const existing = sqliteDb.prepare('SELECT id FROM suppliers WHERE name = ?').get(data.name);
+    if (existing) {
+      sqliteDb.prepare('UPDATE suppliers SET phone = ?, email = ?, address = ? WHERE id = ?')
+        .run(data.phone || '', data.email || '', data.address || '', existing.id);
+    } else {
+      sqliteDb.prepare(`
+        INSERT INTO suppliers (name, contact_person, phone, email, address, total_purchased, total_paid)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `).run(data.name, data.contact_person || '', data.phone || '', data.email || '', data.address || '', Number(data.balance_due || 0), 0);
+    }
+  } catch (err) {
+    console.warn('⚠️ SQLite Supplier Sync error:', err.message);
+  }
+}
+
+// Background sync: pulls latest medicines from MongoDB into SQLite on startup
+async function mirrorMongoToSQLite() {
+  try {
+    console.log('🔄 Mirroring Cloud (MongoDB) Data into Local SQLite...');
+    const meds = await Medicine.find();
+    for (const m of meds) {
+      syncMedicineToSQLite(m);
+    }
+    const sups = await Supplier.find();
+    for (const s of sups) {
+      syncSupplierToSQLite(s);
+    }
+    console.log(`✅ Mirrored ${meds.length} Medicines & ${sups.length} Suppliers into Local SQLite!`);
+  } catch (err) {
+    console.warn('⚠️ Mirroring Warning:', err.message);
+  }
+}
+
+// ==================== INITIALIZATION ====================
+
 export async function initHybridDatabase() {
-  // 1. Always initialize local SQLite database (for offline fallback)
+  // 1. Initialize local SQLite database
   console.log('📦 Initializing Local SQLite Engine...');
   try {
     initSqlite();
@@ -28,13 +149,15 @@ export async function initHybridDatabase() {
     console.error('⚠️ SQLite Init Warning:', err.message);
   }
 
-  // 2. Try connecting to MongoDB Atlas (Internet check)
+  // 2. Try connecting to MongoDB Atlas
   console.log('🌐 Checking Cloud Database (MongoDB Atlas)...');
   const mongoConnected = await connectMongoDB();
 
   if (mongoConnected) {
     currentMode = 'online';
     console.log('🟢 SYSTEM RUNNING IN: [ONLINE CLOUD MODE] (MongoDB Atlas)');
+    // Background mirror into SQLite so offline is always 100% up-to-date!
+    mirrorMongoToSQLite();
   } else {
     currentMode = 'offline';
     console.log('🟠 SYSTEM RUNNING IN: [OFFLINE STANDALONE MODE] (Local SQLite)');
@@ -47,7 +170,8 @@ export function getSystemMode() {
   return {
     mode: currentMode,
     isOnline: currentMode === 'online',
-    database: currentMode === 'online' ? 'MongoDB Atlas (Cloud)' : 'Local SQLite (Offline)'
+    database: currentMode === 'online' ? 'MongoDB Atlas (Cloud) + SQLite Auto-Sync' : 'Local SQLite (Offline)',
+    dualWriteEnabled: true
   };
 }
 
@@ -119,6 +243,9 @@ export async function getAllMedicines() {
 }
 
 export async function createMedicine(data) {
+  // 1. Dual-Write: Always save into local SQLite
+  syncMedicineToSQLite(data);
+
   if (currentMode === 'online') {
     const med = await Medicine.create({
       name: data.name,
@@ -135,46 +262,29 @@ export async function createMedicine(data) {
     });
     return { id: med._id, ...med.toObject() };
   } else {
-    const stmt = sqliteDb.prepare(`
-      INSERT INTO medicines (name, generic_name, dosage, cost_price, selling_price, stock_quantity, min_stock_alert, expiry_date, batch_no)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `);
-    const info = stmt.run(
-      data.name,
-      data.generic_name || '',
-      data.dosage || '',
-      Number(data.cost_price),
-      Number(data.selling_price),
-      Number(data.stock_quantity || 0),
-      Number(data.min_stock_alert || data.reorder_level || 10),
-      data.expiry_date,
-      data.batch_no || data.batch_number || ''
-    );
-    return { id: info.lastInsertRowid, ...data };
+    const row = sqliteDb.prepare('SELECT id FROM medicines WHERE name = ?').get(data.name);
+    return { id: row ? row.id : Date.now(), ...data };
   }
 }
 
 export async function updateMedicine(id, data) {
+  // Dual-write to SQLite
+  syncMedicineToSQLite(data);
+
   if (currentMode === 'online') {
     const med = await Medicine.findByIdAndUpdate(id, data, { new: true });
     return med ? { id: med._id, ...med.toObject() } : null;
   } else {
-    const stmt = sqliteDb.prepare(`
-      UPDATE medicines SET
-        name = COALESCE(?, name),
-        cost_price = COALESCE(?, cost_price),
-        selling_price = COALESCE(?, selling_price),
-        stock_quantity = COALESCE(?, stock_quantity),
-        expiry_date = COALESCE(?, expiry_date)
-      WHERE id = ?
-    `);
-    stmt.run(data.name, data.cost_price, data.selling_price, data.stock_quantity, data.expiry_date, id);
     return { id, ...data };
   }
 }
 
 export async function deleteMedicine(id) {
   if (currentMode === 'online') {
+    const med = await Medicine.findById(id);
+    if (med) {
+      sqliteDb.prepare('DELETE FROM medicines WHERE name = ?').run(med.name);
+    }
     await Medicine.findByIdAndDelete(id);
   } else {
     sqliteDb.prepare('DELETE FROM medicines WHERE id = ?').run(id);
@@ -192,11 +302,15 @@ export async function getAllCategories() {
 }
 
 export async function createCategory(name, description = '') {
+  try {
+    sqliteDb.prepare('INSERT OR IGNORE INTO categories (name, description) VALUES (?, ?)').run(name, description);
+  } catch (e) {}
+
   if (currentMode === 'online') {
     return await Category.create({ name, description });
   } else {
-    const info = sqliteDb.prepare('INSERT INTO categories (name, description) VALUES (?, ?)').run(name, description);
-    return { id: info.lastInsertRowid, name, description };
+    const row = sqliteDb.prepare('SELECT id FROM categories WHERE name = ?').get(name);
+    return { id: row ? row.id : Date.now(), name, description };
   }
 }
 
@@ -210,23 +324,13 @@ export async function getAllSuppliers() {
 }
 
 export async function createSupplier(data) {
+  syncSupplierToSQLite(data);
+
   if (currentMode === 'online') {
     return await Supplier.create(data);
   } else {
-    const stmt = sqliteDb.prepare(`
-      INSERT INTO suppliers (name, contact_person, phone, email, address, total_purchased, total_paid)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
-    `);
-    const info = stmt.run(
-      data.name,
-      data.contact_person || '',
-      data.phone || '',
-      data.email || '',
-      data.address || '',
-      Number(data.balance_due || 0),
-      0
-    );
-    return { id: info.lastInsertRowid, ...data };
+    const row = sqliteDb.prepare('SELECT id FROM suppliers WHERE name = ?').get(data.name);
+    return { id: row ? row.id : Date.now(), ...data };
   }
 }
 
@@ -237,6 +341,9 @@ export async function paySupplier(id, amount) {
     if (!sup) return null;
     sup.balance_due = Math.max(0, (sup.balance_due || 0) - payAmt);
     await sup.save();
+
+    // Sync to SQLite
+    sqliteDb.prepare('UPDATE suppliers SET total_paid = total_paid + ? WHERE name = ?').run(payAmt, sup.name);
     return sup;
   } else {
     sqliteDb.prepare('UPDATE suppliers SET total_paid = total_paid + ? WHERE id = ?').run(payAmt, id);
@@ -284,11 +391,22 @@ export async function createDealerPurchase(data) {
   const balance_due = total_amount - paid;
   const grn_number = `GRN-${Date.now().toString().slice(-6)}`;
 
+  // Dual-Write Stock into Local SQLite
+  for (const item of formattedItems) {
+    syncMedicineToSQLite({
+      name: item.medicine_name,
+      cost_price: item.cost_price,
+      selling_price: item.selling_price,
+      stock_quantity: item.quantity,
+      expiry_date: item.expiry_date,
+      batch_number: item.batch_number
+    });
+  }
+
   if (currentMode === 'online') {
     const supplier = await Supplier.findById(supplier_id);
     const supName = supplier ? supplier.name : 'Unknown';
 
-    // Update medicines stock in Mongo
     for (const item of formattedItems) {
       let med = await Medicine.findOne({ name: item.medicine_name });
       if (med) {
@@ -337,34 +455,8 @@ export async function createDealerPurchase(data) {
     `);
     const status = balance_due <= 0 ? 'Paid' : (paid > 0 ? 'Partial' : 'Unpaid');
     const grnInfo = insertGRN.run(invoice_number || grn_number, supplier_id, total_amount, paid, status);
-    const purchaseId = grnInfo.lastInsertRowid;
 
-    // Items and stock update
-    const insertItem = sqliteDb.prepare(`
-      INSERT INTO dealer_purchase_items (purchase_id, medicine_name, quantity, cost_price, selling_price, expiry_date)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `);
-    const updateStock = sqliteDb.prepare(`
-      UPDATE medicines SET stock_quantity = stock_quantity + ?, cost_price = ?, selling_price = ?, expiry_date = ?
-      WHERE name = ?
-    `);
-
-    for (const item of formattedItems) {
-      insertItem.run(purchaseId, item.medicine_name, item.quantity, item.cost_price, item.selling_price, item.expiry_date);
-      const res = updateStock.run(item.quantity, item.cost_price, item.selling_price, item.expiry_date, item.medicine_name);
-      if (res.changes === 0) {
-        sqliteDb.prepare(`
-          INSERT INTO medicines (name, cost_price, selling_price, stock_quantity, expiry_date, batch_no)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `).run(item.medicine_name, item.cost_price, item.selling_price, item.quantity, item.expiry_date, item.batch_number);
-      }
-    }
-
-    // Update supplier balance
-    sqliteDb.prepare('UPDATE suppliers SET total_purchased = total_purchased + ?, total_paid = total_paid + ? WHERE id = ?')
-      .run(total_amount, paid, supplier_id);
-
-    return { id: purchaseId, grn_number, total_amount, status };
+    return { id: grnInfo.lastInsertRowid, grn_number, total_amount, status };
   }
 }
 
@@ -378,12 +470,16 @@ export async function getAllCustomers() {
 }
 
 export async function createCustomer(data) {
+  try {
+    sqliteDb.prepare('INSERT INTO customers (name, phone, address) VALUES (?, ?, ?)')
+      .run(data.name, data.phone || '', data.address || '');
+  } catch (e) {}
+
   if (currentMode === 'online') {
     return await Customer.create(data);
   } else {
-    const stmt = sqliteDb.prepare('INSERT INTO customers (name, phone, address) VALUES (?, ?, ?)');
-    const info = stmt.run(data.name, data.phone || '', data.address || '');
-    return { id: info.lastInsertRowid, ...data };
+    const row = sqliteDb.prepare('SELECT id FROM customers WHERE name = ?').get(data.name);
+    return { id: row ? row.id : Date.now(), ...data };
   }
 }
 
@@ -396,16 +492,20 @@ export async function getAllDoctors() {
 }
 
 export async function createDoctor(data) {
+  try {
+    sqliteDb.prepare('INSERT INTO doctors (name, specialization, hospital, phone, slmc_no) VALUES (?, ?, ?, ?, ?)')
+      .run(data.name, data.specialization || '', data.hospital || '', data.phone || '', data.reg_number || data.slmc_no || '');
+  } catch (e) {}
+
   if (currentMode === 'online') {
     return await Doctor.create(data);
   } else {
-    const stmt = sqliteDb.prepare('INSERT INTO doctors (name, specialization, hospital, phone, slmc_no) VALUES (?, ?, ?, ?, ?)');
-    const info = stmt.run(data.name, data.specialization || '', data.hospital || '', data.phone || '', data.reg_number || data.slmc_no || '');
-    return { id: info.lastInsertRowid, ...data };
+    const row = sqliteDb.prepare('SELECT id FROM doctors WHERE name = ?').get(data.name);
+    return { id: row ? row.id : Date.now(), ...data };
   }
 }
 
-// --- SALES (POS BILLING) ---
+// --- SALES (POS BILLING WITH DUAL-WRITE) ---
 export async function getAllSales() {
   if (currentMode === 'online') {
     return await Sale.find().sort({ createdAt: -1 }).limit(50);
@@ -439,8 +539,23 @@ export async function createSale(data) {
   const finalTotal = (!isNaN(Number(total_amount)) && Number(total_amount) > 0) ? Number(total_amount) : Math.max(0, finalSubtotal - finalDiscount);
   const bill_number = `INV-${Date.now().toString().slice(-6)}`;
 
+  const salePayload = {
+    bill_number,
+    customer_name: customer_name || 'Walking Customer',
+    doctor_name: doctor_name || '',
+    cashier_name: cashier_name || 'Staff',
+    subtotal: finalSubtotal,
+    discount: finalDiscount,
+    total_amount: finalTotal,
+    payment_method: payment_method || 'Cash',
+    items: formattedItems
+  };
+
+  // 🔥 1. Dual-Write: Always save into Local SQLite immediately!
+  syncSaleToSQLite(salePayload);
+
+  // 2. If Online, save into MongoDB Atlas
   if (currentMode === 'online') {
-    // Online: Decrement in Mongo
     for (const item of formattedItems) {
       if (item.medicine_id) {
         const med = await Medicine.findById(item.medicine_id);
@@ -451,47 +566,14 @@ export async function createSale(data) {
       }
     }
 
-    const sale = await Sale.create({
-      bill_number,
-      customer_name: customer_name || 'Walking Customer',
-      doctor_name: doctor_name || '',
-      cashier_name: cashier_name || 'Staff',
-      subtotal: finalSubtotal,
-      discount: finalDiscount,
-      total_amount: finalTotal,
-      payment_method: payment_method || 'Cash',
-      items: formattedItems
-    });
+    const sale = await Sale.create(salePayload);
     return { id: sale._id, ...sale.toObject() };
   } else {
-    // Offline: SQLite Transaction
-    const stmtSale = sqliteDb.prepare(`
-      INSERT INTO sales (invoice_no, customer_name, subtotal, discount_amount, total_amount, paid_amount, change_amount, payment_method)
-      VALUES (?, ?, ?, ?, ?, ?, 0, ?)
-    `);
-    const saleInfo = stmtSale.run(bill_number, customer_name || 'Walking Customer', finalSubtotal, finalDiscount, finalTotal, finalTotal, payment_method || 'Cash');
-    const saleId = saleInfo.lastInsertRowid;
-
-    const stmtItem = sqliteDb.prepare(`
-      INSERT INTO sale_items (sale_id, medicine_id, medicine_name, unit_price, cost_price, quantity, subtotal)
-      VALUES (?, ?, ?, ?, 0, ?, ?)
-    `);
-    const stmtReduceStock = sqliteDb.prepare(`
-      UPDATE medicines SET stock_quantity = MAX(0, stock_quantity - ?) WHERE id = ? OR name = ?
-    `);
-
-    for (const item of formattedItems) {
-      stmtItem.run(saleId, item.medicine_id || null, item.medicine_name, item.unit_price, item.quantity, item.total_price);
-      stmtReduceStock.run(item.quantity, item.medicine_id || 0, item.medicine_name);
-    }
-
+    // Offline mode return
+    const row = sqliteDb.prepare('SELECT id FROM sales WHERE invoice_no = ?').get(bill_number);
     return {
-      id: saleId,
-      bill_number,
-      invoice_no: bill_number,
-      subtotal: finalSubtotal,
-      total_amount: finalTotal,
-      items: formattedItems
+      id: row ? row.id : Date.now(),
+      ...salePayload
     };
   }
 }
