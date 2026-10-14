@@ -44,6 +44,7 @@ export default function App() {
 
   // Modals state
   const [isAddMedOpen, setIsAddMedOpen] = useState(false);
+  const [addModalType, setAddModalType] = useState('medicine'); // 'medicine' | 'grocery'
   const [medicineToEdit, setMedicineToEdit] = useState(null);
   const [isAddDealerOpen, setIsAddDealerOpen] = useState(false);
   const [dealerToEdit, setDealerToEdit] = useState(null);
@@ -100,6 +101,13 @@ export default function App() {
 
   const handleOpenAddMed = () => {
     setMedicineToEdit(null);
+    setAddModalType('medicine');
+    setIsAddMedOpen(true);
+  };
+
+  const handleOpenAddGrocery = () => {
+    setMedicineToEdit(null);
+    setAddModalType('grocery');
     setIsAddMedOpen(true);
   };
 
@@ -153,6 +161,7 @@ export default function App() {
             stats={stats}
             setActiveTab={setActiveTab}
             onOpenAddMed={handleOpenAddMed}
+            onOpenAddGrocery={handleOpenAddGrocery}
             onOpenGRN={() => setIsGRNOpen(true)}
             t={t}
           />
@@ -174,7 +183,8 @@ export default function App() {
             categories={categories}
             suppliers={suppliers}
             onRefresh={loadAllData}
-            onOpenAdd={handleOpenAddMed}
+            onOpenAddMed={handleOpenAddMed}
+            onOpenAddGrocery={handleOpenAddGrocery}
             onEditMedicine={handleEditMedicine}
             t={t}
           />
@@ -223,6 +233,7 @@ export default function App() {
           medicineToEdit={medicineToEdit}
           categories={categories}
           suppliers={suppliers}
+          initialType={addModalType}
           onClose={() => {
             setIsAddMedOpen(false);
             setMedicineToEdit(null);

@@ -14,17 +14,19 @@ import {
   Calendar,
   Sparkles,
   Layers,
-  ArrowUpRight
+  ArrowUpRight,
+  Pill,
+  ShoppingBag
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../api';
 import Logo from '../components/Logo';
 import { pdfGenerator } from '../utils/pdfGenerator';
 
-export default function Dashboard({ stats, setActiveTab, onOpenAddMed, onOpenGRN, t }) {
+export default function Dashboard({ stats, setActiveTab, onOpenAddMed, onOpenAddGrocery, onOpenGRN, t }) {
   if (!stats) {
     return (
       <div className="p-12 text-center text-slate-500 dark:text-slate-400">
-        <div className="inline-block animate-spin w-8 h-8 border-4 border-emerald-500 border-t-transparent rounded-full mb-3" />
+        <div className="inline-block animate-spin w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full mb-3" />
         <p className="font-semibold text-sm">Loading dashboard data...</p>
       </div>
     );
@@ -63,11 +65,11 @@ export default function Dashboard({ stats, setActiveTab, onOpenAddMed, onOpenGRN
     <div className="space-y-6">
       
       {/* Executive Welcome Hero Banner */}
-      <div className="relative overflow-hidden bg-gradient-to-r from-emerald-800 via-teal-800 to-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-xl border border-emerald-700/30">
+      <div className="relative overflow-hidden bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 md:p-8 text-white shadow-xl border border-indigo-900/40">
         
         {/* Subtle decorative circles */}
-        <div className="absolute -right-10 -bottom-10 w-60 h-60 bg-emerald-500/10 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute right-40 -top-10 w-48 h-48 bg-teal-400/10 rounded-full blur-xl pointer-events-none" />
+        <div className="absolute -right-10 -bottom-10 w-60 h-60 bg-indigo-500/10 rounded-full blur-2xl pointer-events-none" />
+        <div className="absolute right-40 -top-10 w-48 h-48 bg-sky-400/10 rounded-full blur-xl pointer-events-none" />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
@@ -82,7 +84,7 @@ export default function Dashboard({ stats, setActiveTab, onOpenAddMed, onOpenGRN
               </div>
             </div>
 
-            <p className="text-emerald-100/90 text-xs md:text-sm max-w-xl font-medium pt-1">
+            <p className="text-slate-300 text-xs md:text-sm max-w-xl font-medium pt-1">
               {t.welcomeSubtitle}
             </p>
           </div>
@@ -91,23 +93,33 @@ export default function Dashboard({ stats, setActiveTab, onOpenAddMed, onOpenGRN
           <div className="flex flex-wrap items-center gap-2.5">
             <button
               onClick={() => setActiveTab('pos')}
-              className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-white text-emerald-950 font-black text-xs md:text-sm shadow-lg hover:bg-emerald-50 active:scale-95 transition-all cursor-pointer"
+              className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-white text-slate-900 font-black text-xs md:text-sm shadow-lg hover:bg-slate-100 active:scale-95 transition-all cursor-pointer ring-1 ring-white/50"
             >
-              <ShoppingCart className="w-4 h-4 text-emerald-700" />
+              <ShoppingCart className="w-4 h-4 text-indigo-600" />
               {t.openPosCounter}
             </button>
 
+            {/* Separate Medicine Add */}
             <button
               onClick={onOpenAddMed}
-              className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs backdrop-blur-md border border-white/20 transition-all cursor-pointer"
+              className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-indigo-600/90 hover:bg-indigo-600 text-white font-bold text-xs shadow-md border border-indigo-400/30 transition-all cursor-pointer active:scale-95"
             >
-              <Plus className="w-4 h-4" />
-              {t.addMedicine}
+              <Pill className="w-4 h-4" />
+              <span>{t.addMedicineOnly || '+ Add Medicine'}</span>
+            </button>
+
+            {/* Separate Grocery Add */}
+            <button
+              onClick={onOpenAddGrocery}
+              className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-amber-500/90 hover:bg-amber-500 text-white font-bold text-xs shadow-md border border-amber-300/30 transition-all cursor-pointer active:scale-95"
+            >
+              <ShoppingBag className="w-4 h-4" />
+              <span>{t.addGroceryOnly || '+ Add Grocery'}</span>
             </button>
 
             <button
               onClick={onOpenGRN}
-              className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white/15 hover:bg-white/25 text-white font-bold text-xs backdrop-blur-md border border-white/20 transition-all cursor-pointer"
+              className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs backdrop-blur-md border border-white/20 transition-all cursor-pointer active:scale-95"
             >
               <Truck className="w-4 h-4" />
               {t.dealerStockInward}
@@ -115,7 +127,7 @@ export default function Dashboard({ stats, setActiveTab, onOpenAddMed, onOpenGRN
 
             <button
               onClick={handleDownloadReport}
-              className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-emerald-600/90 hover:bg-emerald-600 text-white font-bold text-xs shadow-md border border-emerald-400/30 transition-all cursor-pointer"
+              className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs backdrop-blur-md border border-white/20 transition-all cursor-pointer"
               title={t.downloadDashboardReport}
             >
               <Download className="w-4 h-4" />
