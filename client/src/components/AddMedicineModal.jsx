@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Pill, ShoppingBag, BookOpen, Save, AlertCircle } from 'lucide-react';
+import { X, Pill, ShoppingBag, BookOpen, Save, AlertCircle, Camera, QrCode } from 'lucide-react';
 import { api } from '../api';
+import CameraScannerModal from './CameraScannerModal';
 
 export default function AddMedicineModal({ isOpen, onClose, onSaved, medicineToEdit, categories, suppliers, initialType = 'medicine' }) {
   if (!isOpen) return null;
@@ -27,6 +28,7 @@ export default function AddMedicineModal({ isOpen, onClose, onSaved, medicineToE
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [isCameraOpen, setIsCameraOpen] = useState(false);
 
   useEffect(() => {
     if (medicineToEdit) {
@@ -395,15 +397,35 @@ export default function AddMedicineModal({ isOpen, onClose, onSaved, medicineToE
 
             {/* Barcode */}
             <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Barcode / Code (බාර්කෝඩ්)</label>
-              <input
-                type="text"
-                name="barcode"
-                value={formData.barcode}
-                onChange={handleChange}
-                placeholder="Scanner barcode or leave blank"
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm"
-              />
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-slate-700">Barcode / QR Code (බාර්කෝඩ්)</label>
+                <button
+                  type="button"
+                  onClick={() => setIsCameraOpen(true)}
+                  className="inline-flex items-center gap-1 text-[11px] font-bold text-indigo-600 hover:text-indigo-800 cursor-pointer"
+                >
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>Scan via Camera</span>
+                </button>
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  name="barcode"
+                  value={formData.barcode}
+                  onChange={handleChange}
+                  placeholder="Scan barcode or enter manually"
+                  className="w-full px-3.5 py-2 pr-10 rounded-xl border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-xs sm:text-sm font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => setIsCameraOpen(true)}
+                  title="Scan with Camera"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-indigo-600 cursor-pointer"
+                >
+                  <QrCode className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Buying & Selling Price */}
@@ -556,6 +578,18 @@ export default function AddMedicineModal({ isOpen, onClose, onSaved, medicineToE
         </form>
 
       </div>
+
+      {/* Camera QR & Barcode Scanner for Intake */}
+      {isCameraOpen && (
+        <CameraScannerModal
+          isOpen={isCameraOpen}
+          onClose={() => setIsCameraOpen(false)}
+          onScanSuccess={(code) => {
+            setFormData(prev => ({ ...prev, barcode: code }));
+            setIsCameraOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }

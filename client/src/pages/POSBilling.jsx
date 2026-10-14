@@ -20,10 +20,14 @@ import {
   Sparkles,
   Zap,
   Check,
-  Calculator
+  Calculator,
+  Camera,
+  QrCode
 } from 'lucide-react';
 import { api, formatCurrency } from '../api';
 import ReceiptModal from '../components/ReceiptModal';
+import CameraScannerModal from '../components/CameraScannerModal';
+import { playScannerBeep } from '../utils/scannerSound';
 
 export default function POSBilling({ medicines = [], customers = [], doctors = [], currentUser, onRefreshData, t }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -48,6 +52,10 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
   const [completedSale, setCompletedSale] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // QR & Barcode Scanner States
+  const [isCameraScannerOpen, setIsCameraScannerOpen] = useState(false);
+  const [scanToast, setScanToast] = useState(null);
 
   const searchInputRef = useRef(null);
 
@@ -126,6 +134,148 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
     });
     setError('');
   };
+
+  const triggerScanAlert = (message, type = 'success') => {
+    setScanToast({ message, type });
+    playScannerBeep(type);
+    setTimeout(() => {
+      setScanToast(null);
+    }, 3000);
+  };
+
+  const handleBarcodeOrQrScan = (rawCode) => {
+    if (!rawCode) return;
+    const code = String(rawCode).trim();
+    if (!code) return;
+
+    // 1. Check for JSON format (Prescription QR / Digital Item QR)
+    if ((code.startsWith('{') && code.endsWith('}')) || (code.startsWith('[') && code.endsWith(']'))) {
+      try {
+        const parsed = JSON.parse(code);
+        
+        // Customer or Doctor in QR
+        if (parsed.customer || parsed.patient) {
+          setCustomCustomerName(parsed.customer || parsed.patient);
+        }
+        if (parsed.doctor) {
+          setCustomDoctorName(parsed.doctor);
+        }
+
+        // Items in QR
+        const itemsToScan = Array.isArray(parsed.items) 
+          ? parsed.items 
+          : (parsed.barcode || parsed.id || parsed.sku ? [parsed] : []);
+
+        if (itemsToScan.length > 0) {
+          let addedCount = 0;
+          itemsToScan.forEach(itemObj => {
+            const itemCode = String(itemObj.barcode || itemObj.id || itemObj.code || itemObj).trim();
+            const found = medicines.find(m => 
+              (m.barcode && m.barcode.toLowerCase() === itemCode.toLowerCase()) ||
+              String(m.id) === itemCode ||
+              m.name.toLowerCase() === itemCode.toLowerCase()
+            );
+            if (found && found.stock_quantity > 0) {
+              const qtyToAdd = Number(itemObj.quantity || itemObj.qty || 1);
+              for (let i = 0; i < qtyToAdd; i++) {
+                addToCart(found);
+              }
+              addedCount++;
+            }
+          });
+
+          if (addedCount > 0) {
+            triggerScanAlert(`ඩිජිටල් QR එකෙන් අයිතම ${addedCount} ක් බිල්පතට ඇතුළත් විය!`, 'success');
+            setSearchTerm('');
+            return;
+          }
+        }
+      } catch (e) {
+        // Fall through to plain text match
+      }
+    }
+
+    // 2. Direct Item Lookup:
+    // a) By exact barcode
+    const barcodeMatch = medicines.find(m => 
+      m.barcode && m.barcode.trim().toLowerCase() === code.toLowerCase()
+    );
+
+    // b) By exact ID or batch number
+    const idOrBatchMatch = !barcodeMatch && medicines.find(m => 
+      String(m.id) === code || 
+      (m.batch_no && m.batch_no.trim().toLowerCase() === code.toLowerCase())
+    );
+
+    // c) By exact name / generic name
+    const nameMatch = !barcodeMatch && !idOrBatchMatch && medicines.find(m => 
+      m.name.trim().toLowerCase() === code.toLowerCase() ||
+      (m.generic_name && m.generic_name.trim().toLowerCase() === code.toLowerCase())
+    );
+
+    const targetItem = barcodeMatch || idOrBatchMatch || nameMatch;
+
+    if (targetItem) {
+      if (targetItem.stock_quantity <= 0) {
+        triggerScanAlert(`"${targetItem.name}" තොග අවසන්ව ඇත (Out of stock)`, 'error');
+        return;
+      }
+      addToCart(targetItem);
+      triggerScanAlert(`✅ "${targetItem.name}" ස්කෑන් කර බිල්පතට එකතු විය!`, 'success');
+      setSearchTerm('');
+    } else {
+      // Check partial match if single result
+      const matches = medicines.filter(m => 
+        m.name?.toLowerCase().includes(code.toLowerCase()) ||
+        m.generic_name?.toLowerCase().includes(code.toLowerCase()) ||
+        (m.barcode && m.barcode.includes(code))
+      );
+
+      if (matches.length === 1 && matches[0].stock_quantity > 0) {
+        addToCart(matches[0]);
+        triggerScanAlert(`✅ "${matches[0].name}" බිල්පතට එකතු විය!`, 'success');
+        setSearchTerm('');
+      } else {
+        triggerScanAlert(`"${code}" කේතය සඳහා කිසිදු භාණ්ඩයක් හමු නොවීය! (Item not found)`, 'error');
+      }
+    }
+  };
+
+  // Keyboard wedge listener for handheld barcode scanner guns
+  useEffect(() => {
+    let buffer = '';
+    let lastKeyTime = Date.now();
+
+    const handleGlobalKeyDown = (e) => {
+      const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
+      const isInput = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
+      const isSearchInput = document.activeElement === searchInputRef.current;
+
+      if (isSearchInput) return; // Handled directly by input onKeyDown
+
+      const currentTime = Date.now();
+      const timeDiff = currentTime - lastKeyTime;
+      lastKeyTime = currentTime;
+
+      if (e.key === 'Enter') {
+        if (buffer.length >= 2 && timeDiff < 100) {
+          e.preventDefault();
+          handleBarcodeOrQrScan(buffer);
+          buffer = '';
+        } else {
+          buffer = '';
+        }
+      } else if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+        if (timeDiff > 120) {
+          buffer = '';
+        }
+        buffer += e.key;
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [medicines]);
 
   const updateQuantity = (medId, newQty) => {
     if (newQty <= 0) {
@@ -314,7 +464,28 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
         
         {/* Search Bar & Categories Header */}
         <div className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-4 rounded-3xl border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-3">
-          <div className="flex items-center gap-3">
+          
+          {/* Real-time Scan Notification Toast */}
+          {scanToast && (
+            <div className={`p-3 px-4 rounded-2xl text-xs font-bold flex items-center justify-between shadow-lg transition-all animate-in slide-in-from-top-2 duration-200 ${
+              scanToast.type === 'error' 
+                ? 'bg-rose-600 text-white shadow-rose-600/30' 
+                : 'bg-emerald-600 text-white shadow-emerald-600/30'
+            }`}>
+              <div className="flex items-center gap-2">
+                {scanToast.type === 'error' ? <AlertCircle className="w-4 h-4 shrink-0" /> : <Check className="w-4 h-4 shrink-0" />}
+                <span>{scanToast.message}</span>
+              </div>
+              <button 
+                onClick={() => setScanToast(null)} 
+                className="text-white/80 hover:text-white text-xs font-bold ml-2 cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-2 sm:gap-3">
             <div className="relative flex-1">
               <Search className="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-indigo-600 dark:text-indigo-400" />
               <input
@@ -322,18 +493,51 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="ඖෂධ, Grocery හෝ පොත්පත් / ස්ටේෂනරි සොයන්න (Search Medicine, Grocery, Books, Barcode)..."
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (searchTerm.trim()) {
+                      handleBarcodeOrQrScan(searchTerm);
+                    }
+                  }
+                }}
+                placeholder="ඖෂධ, Grocery, පොත්පත් හෝ Barcode / QR ස්කෑන් කරන්න (Type or Scan Barcode/QR)..."
                 className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-slate-800 dark:text-white transition-all placeholder:text-slate-400"
               />
             </div>
+
+            {/* Clear Button */}
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="px-3 py-2.5 text-xs font-bold text-slate-500 hover:text-slate-800 bg-slate-100 dark:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+                className="px-3 py-3 text-xs font-bold text-slate-500 hover:text-slate-800 bg-slate-100 dark:bg-slate-800 rounded-2xl transition-colors cursor-pointer"
               >
                 Clear
               </button>
             )}
+
+            {/* Camera QR & Barcode Scanner Button */}
+            <button
+              type="button"
+              onClick={() => setIsCameraScannerOpen(true)}
+              title="Open Webcam / Camera Scanner for QR & Barcodes"
+              className="flex items-center gap-2 px-3.5 sm:px-4 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700 text-white font-bold text-xs shadow-md shadow-indigo-600/25 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+            >
+              <Camera className="w-4 h-4" />
+              <QrCode className="w-4 h-4" />
+              <span className="hidden sm:inline">Camera Scan (QR)</span>
+            </button>
+          </div>
+
+          {/* Quick Hardware Scanner status pill */}
+          <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
+            <span className="flex items-center gap-1.5 font-medium text-slate-500 dark:text-slate-400">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span>Handheld USB / Bluetooth Scanner Gun Ready (කවුන්ටර ස්කෑනරය සක්‍රියයි)</span>
+            </span>
+            <span className="hidden md:inline text-[10px] text-slate-400">
+              Press Enter or Scan Gun to instant add
+            </span>
           </div>
 
           {/* Category Chips Scroll */}
@@ -1023,6 +1227,13 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
           onClose={() => setCompletedSale(null)}
         />
       )}
+
+      {/* ==================== CAMERA QR & BARCODE SCANNER ==================== */}
+      <CameraScannerModal
+        isOpen={isCameraScannerOpen}
+        onClose={() => setIsCameraScannerOpen(false)}
+        onScanSuccess={handleBarcodeOrQrScan}
+      />
 
     </div>
   );

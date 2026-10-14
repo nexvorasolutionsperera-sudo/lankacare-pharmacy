@@ -1,9 +1,11 @@
-import React from 'react';
-import { Printer, X, CheckCircle, Download, Sparkles, HeartHandshake } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Printer, X, CheckCircle, Download, Sparkles, HeartHandshake, QrCode } from 'lucide-react';
+import QRCode from 'qrcode';
 import { formatCurrency, formatDate } from '../api';
 import { pdfGenerator } from '../utils/pdfGenerator';
 
 export default function ReceiptModal({ sale, onClose }) {
+  const [qrCodeUrl, setQrCodeUrl] = useState('');
   if (!sale) return null;
 
   const handlePrint = () => {
@@ -33,6 +35,29 @@ export default function ReceiptModal({ sale, onClose }) {
     minute: '2-digit',
     hour12: true
   });
+
+  useEffect(() => {
+    if (!sale) return;
+    const qrData = JSON.stringify({
+      pharmacy: 'Aaush Pharmacy',
+      invoice: invoiceNo,
+      date: formattedDateTime,
+      customer: sale.customer_name || 'Walk-in',
+      total: totalAmount,
+      cashier: sale.cashier_name || 'Staff'
+    });
+
+    QRCode.toDataURL(qrData, {
+      width: 140,
+      margin: 1,
+      color: {
+        dark: '#0f172a',
+        light: '#ffffff'
+      }
+    })
+      .then(url => setQrCodeUrl(url))
+      .catch(err => console.error('Failed to generate receipt QR:', err));
+  }, [sale, invoiceNo, formattedDateTime, totalAmount]);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-200">
@@ -227,12 +252,21 @@ export default function ReceiptModal({ sale, onClose }) {
             </div>
           )}
 
-          {/* Barcode Mock Visual */}
-          <div className="py-2 text-center">
-            <div className="inline-block tracking-[4px] font-mono text-[9px] text-slate-400 font-bold">
-              ||| ||||| || |||| ||||| |||| ||| |||||
-            </div>
-            <p className="text-[8px] text-slate-400 font-mono mt-0.5">{invoiceNo}</p>
+          {/* Real QR Code & Invoice Identifier */}
+          <div className="py-2.5 text-center flex flex-col items-center justify-center">
+            {qrCodeUrl ? (
+              <img 
+                src={qrCodeUrl} 
+                alt={`QR for ${invoiceNo}`} 
+                className="w-24 h-24 object-contain mx-auto border border-slate-200 rounded-lg p-1 bg-white print:border-none print:p-0"
+              />
+            ) : (
+              <div className="inline-block tracking-[4px] font-mono text-[9px] text-slate-400 font-bold">
+                ||| ||||| || |||| ||||| |||| ||| |||||
+              </div>
+            )}
+            <p className="text-[9px] text-slate-600 font-mono font-bold mt-1 tracking-wider">{invoiceNo}</p>
+            <span className="text-[8px] text-slate-400 font-sans">Scan QR to verify bill authenticity</span>
           </div>
 
           {/* Footer Warm Note & Branding */}
