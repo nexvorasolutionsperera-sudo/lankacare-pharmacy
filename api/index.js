@@ -143,6 +143,32 @@ const DealerPurchaseSchema = new mongoose.Schema({
   items: [DealerPurchaseItemSchema]
 }, { timestamps: true });
 
+const MedicareOrderSchema = new mongoose.Schema({
+  order_number: { type: String, required: true, unique: true },
+  patient_name: { type: String, required: true },
+  patient_age: { type: Number, default: 0 },
+  patient_gender: { type: String, default: 'Unspecified' },
+  phone: { type: String, default: '' },
+  doctor_name: { type: String, default: 'Self / OTC' },
+  fasting_status: { type: String, default: 'Not Required' },
+  tests: [{
+    name: { type: String, required: true },
+    category: { type: String, default: 'Blood Test' },
+    sample_type: { type: String, default: 'Blood' },
+    price: { type: Number, required: true }
+  }],
+  subtotal: { type: Number, default: 0 },
+  discount: { type: Number, default: 0 },
+  total_amount: { type: Number, required: true },
+  paid_amount: { type: Number, default: 0 },
+  balance_due: { type: Number, default: 0 },
+  payment_method: { type: String, default: 'Cash' },
+  status: { type: String, enum: ['Sample Collected', 'Processing', 'Report Ready', 'Completed', 'Cancelled'], default: 'Sample Collected' },
+  sample_collected_at: { type: String, default: '' },
+  report_ready_at: { type: String, default: '' },
+  remarks: { type: String, default: '' }
+}, { timestamps: true });
+
 const User = mongoose.models.User || mongoose.model('User', UserSchema);
 const Category = mongoose.models.Category || mongoose.model('Category', CategorySchema);
 const Supplier = mongoose.models.Supplier || mongoose.model('Supplier', SupplierSchema);
@@ -151,6 +177,7 @@ const Customer = mongoose.models.Customer || mongoose.model('Customer', Customer
 const Doctor = mongoose.models.Doctor || mongoose.model('Doctor', DoctorSchema);
 const Sale = mongoose.models.Sale || mongoose.model('Sale', SaleSchema);
 const DealerPurchase = mongoose.models.DealerPurchase || mongoose.model('DealerPurchase', DealerPurchaseSchema);
+const MedicareOrder = mongoose.models.MedicareOrder || mongoose.model('MedicareOrder', MedicareOrderSchema);
 
 async function seedServerlessDB() {
   try {
@@ -576,6 +603,93 @@ app.get('/api/reports/sales', async (req, res) => {
       topMedicines,
       paymentMethods
     });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==================== MEDICARE & LAB TESTS ====================
+app.get('/api/medicare', async (req, res) => {
+  try {
+    await connectDB();
+    const orders = await MedicareOrder.find().sort({ createdAt: -1 });
+    res.json(orders.map(o => ({ id: o._id, ...o.toObject() })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/medicare', async (req, res) => {
+  try {
+    await connectDB();
+    const {
+      patient_name,
+      patient_age,
+      patient_gender,
+      phone,
+      doctor_name,
+      fasting_status,
+      tests,
+      subtotal,
+      discount,
+      total_amount,
+      paid_amount,
+      balance_due,
+      payment_method,
+      status,
+      sample_collected_at,
+      report_ready_at,
+      remarks
+    } = req.body;
+
+    const orderNumber = req.body.order_number || `MED-${Date.now().toString().slice(-6)}`;
+    const tot = Number(total_amount) || 0;
+    const paid = Number(paid_amount) || 0;
+    const bal = Number(balance_due !== undefined ? balance_due : Math.max(0, tot - paid));
+
+    const order = await MedicareOrder.create({
+      order_number: orderNumber,
+      patient_name,
+      patient_age: Number(patient_age) || 0,
+      patient_gender: patient_gender || 'Unspecified',
+      phone: phone || '',
+      doctor_name: doctor_name || 'Self / OTC',
+      fasting_status: fasting_status || 'Not Required',
+      tests: Array.isArray(tests) ? tests : [],
+      subtotal: Number(subtotal) || tot,
+      discount: Number(discount) || 0,
+      total_amount: tot,
+      paid_amount: paid,
+      balance_due: bal,
+      payment_method: payment_method || 'Cash',
+      status: status || 'Sample Collected',
+      sample_collected_at: sample_collected_at || new Date().toISOString(),
+      report_ready_at: report_ready_at || '',
+      remarks: remarks || ''
+    });
+
+    res.status(201).json({ id: order._id, ...order.toObject() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/medicare/:id', async (req, res) => {
+  try {
+    await connectDB();
+    const updated = await MedicareOrder.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updated) return res.status(404).json({ error: 'Order not found' });
+    res.json({ id: updated._id, ...updated.toObject() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/medicare/:id', async (req, res) => {
+  try {
+    await connectDB();
+    await MedicareOrder.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

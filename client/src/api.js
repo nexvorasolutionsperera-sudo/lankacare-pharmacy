@@ -130,7 +130,23 @@ export const api = {
   getReportsSummary: (params = {}) => {
     const query = new URLSearchParams(params).toString();
     return safeFetch(`${API_BASE}/reports/sales?${query}`).catch(() => null);
-  }
+  },
+
+  // Medicare & Lab Diagnostics
+  getMedicareOrders: () => safeFetch(`${API_BASE}/medicare`).catch(() => []),
+  createMedicareOrder: (data) => safeFetch(`${API_BASE}/medicare`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }),
+  updateMedicareOrder: (id, data) => safeFetch(`${API_BASE}/medicare/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }),
+  deleteMedicareOrder: (id) => safeFetch(`${API_BASE}/medicare/${id}`, {
+    method: 'DELETE'
+  })
 };
 
 export const formatCurrency = (amount) => {

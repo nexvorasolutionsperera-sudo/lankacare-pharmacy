@@ -14,7 +14,7 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 import mongoose from 'mongoose';
 import sqliteDb, { initDatabase as initSqlite } from './database.js';
 import { connectMongoDB } from './mongoDatabase.js';
-import { User, Category, Supplier, Medicine, Customer, Doctor, Sale, DealerPurchase } from './models.js';
+import { User, Category, Supplier, Medicine, Customer, Doctor, Sale, DealerPurchase, MedicareOrder } from './models.js';
 
 let currentMode = 'offline'; // 'online' | 'offline'
 
@@ -120,6 +120,71 @@ function syncSupplierToSQLite(data) {
   }
 }
 
+function syncMedicareOrderToSQLite(data) {
+  try {
+    const existing = sqliteDb.prepare('SELECT id FROM medicare_orders WHERE order_number = ?').get(data.order_number);
+    const testsJson = typeof data.tests === 'string' ? data.tests : JSON.stringify(data.tests || []);
+    if (existing) {
+      sqliteDb.prepare(`
+        UPDATE medicare_orders SET
+          patient_name = ?, patient_age = ?, patient_gender = ?, phone = ?, doctor_name = ?,
+          fasting_status = ?, tests_json = ?, subtotal = ?, discount = ?, total_amount = ?,
+          paid_amount = ?, balance_due = ?, payment_method = ?, status = ?,
+          sample_collected_at = ?, report_ready_at = ?, remarks = ?
+        WHERE id = ?
+      `).run(
+        data.patient_name,
+        Number(data.patient_age || 0),
+        data.patient_gender || 'Unspecified',
+        data.phone || '',
+        data.doctor_name || 'Self / OTC',
+        data.fasting_status || 'Not Required',
+        testsJson,
+        Number(data.subtotal || data.total_amount || 0),
+        Number(data.discount || 0),
+        Number(data.total_amount || 0),
+        Number(data.paid_amount || 0),
+        Number(data.balance_due || 0),
+        data.payment_method || 'Cash',
+        data.status || 'Sample Collected',
+        data.sample_collected_at || '',
+        data.report_ready_at || '',
+        data.remarks || '',
+        existing.id
+      );
+    } else {
+      sqliteDb.prepare(`
+        INSERT INTO medicare_orders (
+          order_number, patient_name, patient_age, patient_gender, phone, doctor_name,
+          fasting_status, tests_json, subtotal, discount, total_amount, paid_amount,
+          balance_due, payment_method, status, sample_collected_at, report_ready_at, remarks
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        data.order_number,
+        data.patient_name,
+        Number(data.patient_age || 0),
+        data.patient_gender || 'Unspecified',
+        data.phone || '',
+        data.doctor_name || 'Self / OTC',
+        data.fasting_status || 'Not Required',
+        testsJson,
+        Number(data.subtotal || data.total_amount || 0),
+        Number(data.discount || 0),
+        Number(data.total_amount || 0),
+        Number(data.paid_amount || 0),
+        Number(data.balance_due || 0),
+        data.payment_method || 'Cash',
+        data.status || 'Sample Collected',
+        data.sample_collected_at || '',
+        data.report_ready_at || '',
+        data.remarks || ''
+      );
+    }
+  } catch (err) {
+    console.warn('⚠️ SQLite Medicare Sync error:', err.message);
+  }
+}
+
 // Background sync: pulls latest medicines from MongoDB into SQLite on startup
 async function mirrorMongoToSQLite() {
   try {
@@ -132,7 +197,11 @@ async function mirrorMongoToSQLite() {
     for (const s of sups) {
       syncSupplierToSQLite(s);
     }
-    console.log(`✅ Mirrored ${meds.length} Medicines & ${sups.length} Suppliers into Local SQLite!`);
+    const medOrders = await MedicareOrder.find();
+    for (const mo of medOrders) {
+      syncMedicareOrderToSQLite(mo);
+    }
+    console.log(`✅ Mirrored ${meds.length} Medicines, ${sups.length} Suppliers & ${medOrders.length} Medicare Orders into Local SQLite!`);
   } catch (err) {
     console.warn('⚠️ Mirroring Warning:', err.message);
   }
@@ -581,6 +650,108 @@ export async function createSale(data) {
       ...salePayload
     };
   }
+}
+
+// ==================== MEDICARE & LAB TESTS ====================
+
+export async function getAllMedicareOrders() {
+  if (currentMode === 'online') {
+    const orders = await MedicareOrder.find().sort({ createdAt: -1 });
+    return orders.map(o => ({ id: o._id, ...o.toObject() }));
+  } else {
+    const rows = sqliteDb.prepare('SELECT * FROM medicare_orders ORDER BY created_at DESC').all();
+    return rows.map(r => ({
+      id: r.id,
+      ...r,
+      tests: (() => {
+        try { return JSON.parse(r.tests_json); } catch { return []; }
+      })()
+    }));
+  }
+}
+
+export async function createMedicareOrder(data) {
+  const orderNumber = data.order_number || `MED-${Date.now().toString().slice(-6)}`;
+  const orderData = {
+    order_number: orderNumber,
+    patient_name: data.patient_name,
+    patient_age: Number(data.patient_age || 0),
+    patient_gender: data.patient_gender || 'Unspecified',
+    phone: data.phone || '',
+    doctor_name: data.doctor_name || 'Self / OTC',
+    fasting_status: data.fasting_status || 'Not Required',
+    tests: Array.isArray(data.tests) ? data.tests : [],
+    subtotal: Number(data.subtotal || data.total_amount || 0),
+    discount: Number(data.discount || 0),
+    total_amount: Number(data.total_amount || 0),
+    paid_amount: Number(data.paid_amount || 0),
+    balance_due: Number(data.balance_due || Math.max(0, (data.total_amount || 0) - (data.paid_amount || 0))),
+    payment_method: data.payment_method || 'Cash',
+    status: data.status || 'Sample Collected',
+    sample_collected_at: data.sample_collected_at || new Date().toISOString(),
+    report_ready_at: data.report_ready_at || '',
+    remarks: data.remarks || ''
+  };
+
+  syncMedicareOrderToSQLite(orderData);
+
+  if (currentMode === 'online') {
+    const order = await MedicareOrder.create(orderData);
+    return { id: order._id, ...order.toObject() };
+  } else {
+    const row = sqliteDb.prepare('SELECT * FROM medicare_orders WHERE order_number = ?').get(orderNumber);
+    return {
+      id: row ? row.id : Date.now(),
+      ...orderData
+    };
+  }
+}
+
+export async function updateMedicareOrder(id, data) {
+  if (currentMode === 'online' && mongoose.Types.ObjectId.isValid(id)) {
+    const updated = await MedicareOrder.findByIdAndUpdate(id, data, { new: true });
+    if (updated) {
+      syncMedicareOrderToSQLite(updated.toObject());
+      return { id: updated._id, ...updated.toObject() };
+    }
+  }
+
+  // SQLite update
+  const numericId = Number(id);
+  const existing = sqliteDb.prepare('SELECT * FROM medicare_orders WHERE id = ? OR order_number = ?').get(numericId || 0, id);
+  if (existing) {
+    const fields = ['status', 'paid_amount', 'balance_due', 'report_ready_at', 'remarks'];
+    const updates = [];
+    const values = [];
+    for (const f of fields) {
+      if (data[f] !== undefined) {
+        updates.push(`${f} = ?`);
+        values.push(data[f]);
+      }
+    }
+    if (updates.length > 0) {
+      values.push(existing.id);
+      sqliteDb.prepare(`UPDATE medicare_orders SET ${updates.join(', ')} WHERE id = ?`).run(...values);
+    }
+    const refreshed = sqliteDb.prepare('SELECT * FROM medicare_orders WHERE id = ?').get(existing.id);
+    return {
+      id: refreshed.id,
+      ...refreshed,
+      tests: (() => {
+        try { return JSON.parse(refreshed.tests_json); } catch { return []; }
+      })()
+    };
+  }
+
+  return null;
+}
+
+export async function deleteMedicareOrder(id) {
+  if (currentMode === 'online' && mongoose.Types.ObjectId.isValid(id)) {
+    await MedicareOrder.findByIdAndDelete(id);
+  }
+  sqliteDb.prepare('DELETE FROM medicare_orders WHERE id = ? OR order_number = ?').run(Number(id) || 0, id);
+  return { success: true };
 }
 
 // --- DASHBOARD STATS ---

@@ -16,7 +16,8 @@ import {
   Layers,
   ArrowUpRight,
   Pill,
-  ShoppingBag
+  ShoppingBag,
+  Activity
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../api';
 import Logo from '../components/Logo';
@@ -115,6 +116,15 @@ export default function Dashboard({ stats, setActiveTab, onOpenAddMed, onOpenAdd
             >
               <ShoppingBag className="w-4 h-4" />
               <span>{t.addGroceryOnly || '+ Add Grocery'}</span>
+            </button>
+
+            {/* Medicare / Lab Tests quick button */}
+            <button
+              onClick={() => setActiveTab('medicare')}
+              className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-sky-500/90 hover:bg-sky-500 text-white font-bold text-xs shadow-md border border-sky-300/30 transition-all cursor-pointer active:scale-95"
+            >
+              <Activity className="w-4 h-4" />
+              <span>{t.medicareServices || 'Lab Tests & ECG'}</span>
             </button>
 
             <button

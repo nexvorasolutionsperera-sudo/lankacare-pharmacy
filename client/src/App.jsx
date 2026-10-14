@@ -6,6 +6,7 @@ import Medicines from './pages/Medicines';
 import Suppliers from './pages/Suppliers';
 import Alerts from './pages/Alerts';
 import CustomersDoctors from './pages/CustomersDoctors';
+import MedicareServices from './pages/MedicareServices';
 import Reports from './pages/Reports';
 import LoginPage from './pages/LoginPage';
 
@@ -218,6 +219,14 @@ export default function App() {
               onRefresh={loadAllData}
               onOpenAddCustomer={() => setIsAddCustomerOpen(true)}
               onOpenAddDoctor={() => setIsAddDoctorOpen(true)}
+              t={t}
+            />
+          )}
+
+          {activeTab === 'medicare' && (
+            <MedicareServices
+              customers={customers}
+              doctors={doctors}
               t={t}
             />
           )}

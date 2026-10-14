@@ -25,7 +25,11 @@ import {
   createDoctor,
   getAllSales,
   createSale,
-  getDashboardStats
+  getDashboardStats,
+  getAllMedicareOrders,
+  createMedicareOrder,
+  updateMedicareOrder,
+  deleteMedicareOrder
 } from './hybridDatabase.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -313,6 +317,44 @@ app.get('/api/reports/sales', async (req, res) => {
       topMedicines,
       paymentMethods
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== MEDICARE & LAB TESTS ====================
+app.get('/api/medicare', async (req, res) => {
+  try {
+    const orders = await getAllMedicareOrders();
+    res.json(orders);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/medicare', async (req, res) => {
+  try {
+    const order = await createMedicareOrder(req.body);
+    res.status(201).json(order);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/medicare/:id', async (req, res) => {
+  try {
+    const order = await updateMedicareOrder(req.params.id, req.body);
+    if (!order) return res.status(404).json({ error: 'Order not found' });
+    res.json(order);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/medicare/:id', async (req, res) => {
+  try {
+    await deleteMedicareOrder(req.params.id);
+    res.json({ success: true });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

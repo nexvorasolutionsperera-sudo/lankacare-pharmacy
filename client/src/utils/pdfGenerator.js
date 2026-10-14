@@ -343,5 +343,188 @@ export const pdfGenerator = {
     });
 
     doc.save(`Pharmacy-Inventory-Audit-${new Date().toISOString().split('T')[0]}.pdf`);
+  },
+
+  // 4. GENERATE MEDICARE / LAB TEST WORK ORDER PDF (A4)
+  generateMedicareOrderPDF: (order) => {
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
+    });
+
+    const orderNo = order.order_number || `MED-${Date.now().toString().slice(-6)}`;
+    const tests = Array.isArray(order.tests) ? order.tests : [];
+
+    // Header Band
+    doc.setFillColor(15, 23, 42); // slate-900
+    doc.rect(0, 0, 210, 32, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(16);
+    doc.setTextColor(255, 255, 255);
+    doc.text('AAUSH PHARMACY', 14, 13);
+
+    doc.setFontSize(8.5);
+    doc.setTextColor(56, 189, 248); // sky-400
+    doc.text('GROCERY & HEALTH MEDI CARE | CLINICAL DIAGNOSTICS & LAB SERVICES', 14, 19);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(203, 213, 225); // slate-300
+    doc.text('Tel: 011-2925840 / 077-1234567 | Reg No: PH-MED-2026/09', 14, 25);
+
+    // Order Title Pill
+    doc.setFillColor(30, 41, 59);
+    doc.roundedRect(140, 6, 56, 20, 2, 2, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.setTextColor(148, 163, 184);
+    doc.text('LAB TOKEN / WORK ORDER', 168, 12, { align: 'center' });
+    doc.setFontSize(11);
+    doc.setTextColor(255, 255, 255);
+    doc.text(orderNo, 168, 20, { align: 'center' });
+
+    // Patient & Doctor Information Box
+    doc.setFillColor(248, 250, 252); // slate-50
+    doc.setDrawColor(226, 232, 240); // slate-200
+    doc.roundedRect(14, 38, 182, 32, 2, 2, 'FD');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text('PATIENT & CLINICAL DETAILS', 20, 44);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(71, 85, 105);
+
+    doc.text(`Patient Name:`, 20, 51);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${order.patient_name || 'Walk-in Patient'}`, 45, 51);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Age / Gender:`, 20, 58);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${order.patient_age || '-'} Yrs / ${order.patient_gender || 'Unspecified'}`, 45, 58);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Contact Phone:`, 20, 65);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${order.phone || 'N/A'}`, 45, 65);
+
+    // Right Column
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Prescribed Doctor:`, 110, 51);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${order.doctor_name || 'Self / OTC'}`, 140, 51);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Fasting Status:`, 110, 58);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${order.fasting_status || 'Not Required'}`, 140, 58);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+    doc.text(`Date & Time:`, 110, 65);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text(`${new Date(order.createdAt || Date.now()).toLocaleString('en-GB')}`, 140, 65);
+
+    // Tests Table
+    const rows = tests.map((t, idx) => [
+      idx + 1,
+      t.name,
+      t.category || 'Clinical Test',
+      t.sample_type || 'Blood / Procedure',
+      fmtLKR(t.price)
+    ]);
+
+    autoTable(doc, {
+      startY: 76,
+      margin: { left: 14, right: 14 },
+      headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255], fontStyle: 'bold' },
+      styles: { fontSize: 8.5, cellPadding: 2.5 },
+      head: [['#', 'Diagnostic Test / Clinical Service', 'Department', 'Sample / Procedure', 'Fee (LKR)']],
+      body: rows,
+      columnStyles: {
+        0: { cellWidth: 10, halign: 'center' },
+        1: { fontStyle: 'bold' },
+        3: { halign: 'center' },
+        4: { halign: 'right', fontStyle: 'bold' }
+      }
+    });
+
+    const finalY = doc.lastAutoTable.finalY + 8;
+
+    // Financial summary box
+    doc.setFillColor(248, 250, 252);
+    doc.setDrawColor(226, 232, 240);
+    doc.roundedRect(120, finalY, 76, 32, 2, 2, 'FD');
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(71, 85, 105);
+    doc.text('Subtotal:', 125, finalY + 7);
+    doc.text(fmtLKR(order.subtotal || order.total_amount), 190, finalY + 7, { align: 'right' });
+
+    if (order.discount > 0) {
+      doc.text('Discount:', 125, finalY + 13);
+      doc.text(`- ${fmtLKR(order.discount)}`, 190, finalY + 13, { align: 'right' });
+    }
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text('Total Amount:', 125, finalY + 20);
+    doc.text(fmtLKR(order.total_amount), 190, finalY + 20, { align: 'right' });
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(16, 120, 80);
+    doc.text('Amount Paid:', 125, finalY + 26);
+    doc.text(fmtLKR(order.paid_amount || order.total_amount), 190, finalY + 26, { align: 'right' });
+
+    if (order.balance_due > 0) {
+      doc.setTextColor(225, 29, 72);
+      doc.text('Balance Due:', 125, finalY + 31);
+      doc.text(fmtLKR(order.balance_due), 190, finalY + 31, { align: 'right' });
+    }
+
+    // Instructions on the left
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(15, 23, 42);
+    doc.text('Patient Instructions:', 14, finalY + 7);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text('• Please present this work token when collecting reports.', 14, finalY + 13);
+    doc.text('• Reports are generally ready within 4 - 24 hours depending on the test.', 14, finalY + 18);
+    doc.text('• Fasting blood tests require 10-12 hours of water-only fasting.', 14, finalY + 23);
+    doc.text(`• Status: ${order.status || 'Sample Collected'}`, 14, finalY + 28);
+
+    // Signatures
+    const sigY = finalY + 45;
+    doc.setDrawColor(203, 213, 225);
+    doc.line(14, sigY, 65, sigY);
+    doc.line(145, sigY, 196, sigY);
+
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Phlebotomist / Nursing Staff', 20, sigY + 4);
+    doc.text('Authorized Medical Officer / Lab', 148, sigY + 4);
+
+    doc.save(`Aaush-Medicare-WorkOrder-${orderNo}.pdf`);
   }
 };

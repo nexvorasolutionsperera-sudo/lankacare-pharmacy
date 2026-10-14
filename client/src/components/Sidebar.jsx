@@ -15,7 +15,8 @@ import {
   Menu,
   X,
   ShieldCheck,
-  UserCheck
+  UserCheck,
+  Activity
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -61,6 +62,7 @@ export default function Sidebar({
       badgeColor: 'bg-rose-500'
     },
     { id: 'customers', label: t.customersDocs, icon: Users },
+    { id: 'medicare', label: t.medicareServices || 'Medicare & Lab Tests', icon: Activity },
     { id: 'reports', label: t.reports, icon: BarChart3 }
   ];
 

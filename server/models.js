@@ -101,6 +101,32 @@ const DealerPurchaseSchema = new mongoose.Schema({
   items: [DealerPurchaseItemSchema]
 }, { timestamps: true });
 
+const MedicareOrderSchema = new mongoose.Schema({
+  order_number: { type: String, required: true, unique: true },
+  patient_name: { type: String, required: true },
+  patient_age: { type: Number, default: 0 },
+  patient_gender: { type: String, default: 'Unspecified' },
+  phone: { type: String, default: '' },
+  doctor_name: { type: String, default: 'Self / OTC' },
+  fasting_status: { type: String, default: 'Not Required' },
+  tests: [{
+    name: { type: String, required: true },
+    category: { type: String, default: 'Blood Test' },
+    sample_type: { type: String, default: 'Blood' },
+    price: { type: Number, required: true }
+  }],
+  subtotal: { type: Number, default: 0 },
+  discount: { type: Number, default: 0 },
+  total_amount: { type: Number, required: true },
+  paid_amount: { type: Number, default: 0 },
+  balance_due: { type: Number, default: 0 },
+  payment_method: { type: String, default: 'Cash' },
+  status: { type: String, enum: ['Sample Collected', 'Processing', 'Report Ready', 'Completed', 'Cancelled'], default: 'Sample Collected' },
+  sample_collected_at: { type: String, default: '' },
+  report_ready_at: { type: String, default: '' },
+  remarks: { type: String, default: '' }
+}, { timestamps: true });
+
 export const User = mongoose.model('User', UserSchema);
 export const Category = mongoose.model('Category', CategorySchema);
 export const Supplier = mongoose.model('Supplier', SupplierSchema);
@@ -109,3 +135,4 @@ export const Customer = mongoose.model('Customer', CustomerSchema);
 export const Doctor = mongoose.model('Doctor', DoctorSchema);
 export const Sale = mongoose.model('Sale', SaleSchema);
 export const DealerPurchase = mongoose.model('DealerPurchase', DealerPurchaseSchema);
+export const MedicareOrder = mongoose.model('MedicareOrder', MedicareOrderSchema);

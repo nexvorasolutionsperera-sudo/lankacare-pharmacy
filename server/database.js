@@ -137,6 +137,29 @@ export function initDatabase() {
       role TEXT DEFAULT 'Pharmacist',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS medicare_orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_number TEXT UNIQUE NOT NULL,
+      patient_name TEXT NOT NULL,
+      patient_age INTEGER DEFAULT 0,
+      patient_gender TEXT DEFAULT 'Unspecified',
+      phone TEXT,
+      doctor_name TEXT DEFAULT 'Self / OTC',
+      fasting_status TEXT DEFAULT 'Not Required',
+      tests_json TEXT NOT NULL,
+      subtotal REAL DEFAULT 0,
+      discount REAL DEFAULT 0,
+      total_amount REAL NOT NULL,
+      paid_amount REAL DEFAULT 0,
+      balance_due REAL DEFAULT 0,
+      payment_method TEXT DEFAULT 'Cash',
+      status TEXT DEFAULT 'Sample Collected',
+      sample_collected_at TEXT,
+      report_ready_at TEXT,
+      remarks TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
 
   // Seed default users if not present
