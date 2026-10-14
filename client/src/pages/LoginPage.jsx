@@ -63,13 +63,16 @@ export default function LoginPage({ onLoginSuccess }) {
           <div className="flex justify-center mb-3">
             <img 
               src="/pharmacy-logo.png" 
-              alt="LankaCare Pharmacy" 
-              className="h-20 w-auto object-contain drop-shadow-md"
+              alt="Aaush pharmacy" 
+              className="h-24 w-auto object-contain drop-shadow-md rounded-2xl"
             />
           </div>
-          <h1 className="text-xl font-extrabold text-slate-800 tracking-tight">LankaCare</h1>
-          <p className="text-xs text-slate-500 font-medium mt-1">
-            ඔසුසල් කළමනාකරණ පද්ධතියට පිවිසෙන්න
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Aaush pharmacy</h1>
+          <p className="text-xs font-black text-emerald-700 uppercase tracking-widest mt-1">
+            GROCERY & HEALTH MEDI CARE
+          </p>
+          <p className="text-[11px] text-slate-500 font-medium mt-0.5">
+            Your Trusted Source for Wellness
           </p>
         </div>
 

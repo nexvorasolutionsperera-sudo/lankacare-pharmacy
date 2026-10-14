@@ -69,17 +69,17 @@ export default function ReceiptModal({ sale, onClose }) {
                 className="h-14 w-auto object-contain mx-auto"
               />
             </div>
-            <h2 className="text-base font-black uppercase tracking-wider text-slate-900 font-sans">
-              LANKACARE PHARMACY
+            <h2 className="text-lg font-black uppercase tracking-tight text-slate-900 font-sans leading-tight">
+              Aaush pharmacy
             </h2>
-            <p className="text-[11px] font-sans font-semibold text-emerald-700">
-              රජයේ ලියාපදිංචි ඔසුසල • Reg No: PH-84920
+            <p className="text-[11px] font-sans font-black text-emerald-800 tracking-wider">
+              GROCERY & HEALTH MEDI CARE
+            </p>
+            <p className="text-[10px] text-slate-500 font-sans italic">
+              "Your Trusted Source for Wellness"
             </p>
             <p className="text-[10px] text-slate-500 font-sans mt-0.5">
-              142, Kandy Road, Kadawatha, Sri Lanka
-            </p>
-            <p className="text-[10px] text-slate-500 font-sans">
-              Hotline: 011-2925840 / 077-4567890
+              142, Main Street, Sri Lanka • Tel: 011-2925840
             </p>
           </div>
 

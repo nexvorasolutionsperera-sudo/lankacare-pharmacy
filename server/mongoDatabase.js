@@ -49,7 +49,57 @@ async function seedMongoDatabase() {
         { name: 'Respiratory', description: 'Asthma, cough, and allergy' },
         { name: 'Gastrointestinal', description: 'Stomach and digestive' },
         { name: 'Vitamins & Supplements', description: 'Daily nutrients' },
-        { name: 'Dermatological', description: 'Skin creams and lotions' }
+        { name: 'Dermatological', description: 'Skin creams and lotions' },
+        { name: 'Grocery & Essentials', description: 'Daily grocery, baby foods, milk powder & health snacks' },
+        { name: 'Personal Care & Hygiene', description: 'Soaps, shampoos, oral care and hygiene items' }
+      ]);
+    } else {
+      // Ensure Grocery categories exist
+      await Category.updateOne({ name: 'Grocery & Essentials' }, { $setOnInsert: { description: 'Daily grocery, baby foods, milk powder & health snacks' } }, { upsert: true });
+      await Category.updateOne({ name: 'Personal Care & Hygiene' }, { $setOnInsert: { description: 'Soaps, shampoos, oral care and hygiene items' } }, { upsert: true });
+    }
+
+    // Ensure sample grocery items exist in Medicine / Product catalog
+    const groceryExists = await Medicine.findOne({ category: 'Grocery & Essentials' });
+    if (!groceryExists) {
+      console.log('🛒 Adding sample Grocery & Wellness items...');
+      await Medicine.create([
+        {
+          name: 'Anchor Full Cream Milk Powder 400g',
+          generic_name: 'Dairy Milk Powder',
+          category: 'Grocery & Essentials',
+          dosage: '400g Pack',
+          cost_price: 1050,
+          selling_price: 1180,
+          stock_quantity: 45,
+          reorder_level: 10,
+          expiry_date: '2027-06-30',
+          batch_number: 'ANC-8821'
+        },
+        {
+          name: 'Nestomalt Energy Drink 400g',
+          generic_name: 'Malt Food Drink',
+          category: 'Grocery & Essentials',
+          dosage: '400g Refill',
+          cost_price: 820,
+          selling_price: 940,
+          stock_quantity: 35,
+          reorder_level: 8,
+          expiry_date: '2027-04-15',
+          batch_number: 'NST-4412'
+        },
+        {
+          name: 'Dettol Original Soap 100g',
+          generic_name: 'Antiseptic Soap',
+          category: 'Personal Care & Hygiene',
+          dosage: '100g Bar',
+          cost_price: 180,
+          selling_price: 220,
+          stock_quantity: 60,
+          reorder_level: 15,
+          expiry_date: '2028-01-01',
+          batch_number: 'DET-1029'
+        }
       ]);
     }
 

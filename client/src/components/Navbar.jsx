@@ -74,7 +74,7 @@ export default function Navbar({
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           
-          {/* Brand Logo & Mode Badge */}
+          {/* Brand Logo & Name */}
           <div className="flex items-center gap-3">
             <div 
               className="cursor-pointer py-1 flex items-center gap-2.5"
@@ -82,12 +82,16 @@ export default function Navbar({
             >
               <img 
                 src="/pharmacy-logo.png" 
-                alt="LankaCare" 
-                className="h-9 w-auto object-contain"
+                alt="Aaush Pharmacy" 
+                className="h-10 w-auto object-contain rounded-lg"
               />
               <div className="hidden sm:block">
-                <div className="text-sm font-extrabold text-slate-800 dark:text-white leading-tight">LankaCare</div>
-                <div className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Pharmacy System</div>
+                <div className="text-sm font-black text-slate-800 dark:text-white leading-tight tracking-tight">
+                  Aaush pharmacy
+                </div>
+                <div className="text-[9px] text-emerald-600 dark:text-emerald-400 font-extrabold uppercase tracking-wide">
+                  Grocery & Health Medi Care
+                </div>
               </div>
             </div>
           </div>

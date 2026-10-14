@@ -29,13 +29,17 @@ export const pdfGenerator = {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.setTextColor(16, 120, 80);
-    doc.text('LANKA CARE PHARMACY', 40, 9, { align: 'center' });
+    doc.text('AAUSH PHARMACY', 40, 9, { align: 'center' });
 
-    doc.setFontSize(7);
-    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(20, 20, 20);
+    doc.text('GROCERY & HEALTH MEDI CARE', 40, 13, { align: 'center' });
+
+    doc.setFontSize(6.5);
+    doc.setFont('helvetica', 'italic');
     doc.setTextColor(80, 80, 80);
-    doc.text('Reg No: PH-84920 | Tel: 011-2925840', 40, 13, { align: 'center' });
-    doc.text('142, Kandy Road, Kadawatha, Sri Lanka', 40, 16.5, { align: 'center' });
+    doc.text('Your Trusted Source for Wellness | Tel: 011-2925840', 40, 16.5, { align: 'center' });
 
     // Divider line
     doc.setDrawColor(200, 200, 200);

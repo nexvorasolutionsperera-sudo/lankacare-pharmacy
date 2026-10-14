@@ -163,6 +163,8 @@ function seedInitialData() {
   insertCategory.run('Vitamins & Supplements', 'Nutritional and dietary supplements');
   insertCategory.run('Diabetes Care', 'Blood glucose regulation medications');
   insertCategory.run('Topical & Skin Care', 'Ointments, antiseptic creams, and lotions');
+  insertCategory.run('Grocery & Essentials', 'Daily grocery, baby food, milk powder & healthy snacks');
+  insertCategory.run('Personal Care & Hygiene', 'Soaps, baby care, sanitizers and oral hygiene');
 
   const insertSupplier = db.prepare(`
     INSERT INTO suppliers (name, contact_person, phone, email, address, tax_id, total_purchased, total_paid) 
