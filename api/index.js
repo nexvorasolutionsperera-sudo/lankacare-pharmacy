@@ -3,9 +3,12 @@ import cors from 'cors';
 import mongoose from 'mongoose';
 import dns from 'dns';
 
-try {
-  dns.setServers(['8.8.8.8', '1.1.1.1']);
-} catch (e) {}
+// Only apply custom DNS servers locally (bypasses ISP block); let Vercel handle production DNS
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  try {
+    dns.setServers(['8.8.8.8', '1.1.1.1']);
+  } catch (e) {}
+}
 
 const app = express();
 app.use(cors());
@@ -20,12 +23,13 @@ async function connectDB() {
   try {
     await mongoose.connect(MONGODB_URI, {
       serverSelectionTimeoutMS: 5000,
+      bufferCommands: false
     });
     isConnected = true;
     console.log('✅ Connected to MongoDB Atlas');
     await seedServerlessDB();
   } catch (err) {
-    console.error('MongoDB connection error:', err);
+    console.error('MongoDB connection error:', err.message);
   }
 }
 
