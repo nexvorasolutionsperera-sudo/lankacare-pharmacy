@@ -399,6 +399,33 @@ export async function initHybridDatabase() {
     console.log('🟠 SYSTEM RUNNING IN: [OFFLINE STANDALONE MODE] (Local SQLite)');
   }
 
+  // Set up auto-reconnect listeners for seamless Online + Offline transitions
+  try {
+    mongoose.connection.on('disconnected', () => {
+      console.warn('⚠️ Cloud MongoDB connection lost. Automatically switched to OFFLINE mode (Local SQLite)!');
+      currentMode = 'offline';
+    });
+    mongoose.connection.on('reconnected', async () => {
+      console.log('🟢 Cloud MongoDB reconnected! Switching to ONLINE mode and auto-syncing...');
+      currentMode = 'online';
+      syncOfflineDataToCloud().catch(() => {});
+    });
+  } catch (e) {}
+
+  // Periodic Auto-Sync & Background Reconnect Heartbeat (Every 30 seconds)
+  setInterval(async () => {
+    if (currentMode === 'offline') {
+      try {
+        const ok = await connectMongoDB();
+        if (ok) {
+          currentMode = 'online';
+          console.log('🟢 Cloud connection restored! Auto-syncing pending offline transactions to Cloud...');
+          syncOfflineDataToCloud().catch(() => {});
+        }
+      } catch (e) {}
+    }
+  }, 30000);
+
   // Seed bookshop defaults if none exist
   await seedBookshopDefaults();
 
@@ -406,12 +433,179 @@ export async function initHybridDatabase() {
 }
 
 export function getSystemMode() {
+  const isCloudConnected = mongoose.connection.readyState === 1;
   return {
     mode: currentMode,
-    isOnline: currentMode === 'online',
-    database: currentMode === 'online' ? 'MongoDB Atlas (Cloud) + SQLite Auto-Sync' : 'Local SQLite (Offline)',
-    dualWriteEnabled: true
+    isOnline: currentMode === 'online' && isCloudConnected,
+    database: (currentMode === 'online' && isCloudConnected) 
+      ? 'MongoDB Atlas (Cloud) + SQLite Auto-Sync' 
+      : 'Local SQLite (Offline Standalone)',
+    dualWriteEnabled: true,
+    cloudConnected: isCloudConnected,
+    timestamp: new Date().toISOString()
   };
+}
+
+export async function setSystemMode(mode) {
+  if (mode === 'offline') {
+    currentMode = 'offline';
+    console.log('🟠 Switched to OFFLINE mode (Local SQLite) by user.');
+    return getSystemMode();
+  }
+  
+  if (mode === 'online' || mode === 'auto') {
+    if (mongoose.connection.readyState !== 1) {
+      const ok = await connectMongoDB();
+      if (!ok) {
+        currentMode = 'offline';
+        throw new Error('Cloud database connection failed. Please check internet connection.');
+      }
+    }
+    currentMode = 'online';
+    console.log('🟢 Switched to ONLINE mode (Cloud Sync Active).');
+    syncOfflineDataToCloud().catch(e => console.warn('Sync notice:', e.message));
+    return getSystemMode();
+  }
+
+  return getSystemMode();
+}
+
+export async function syncOfflineDataToCloud() {
+  const isCloudConnected = mongoose.connection.readyState === 1;
+  if (!isCloudConnected) {
+    const ok = await connectMongoDB();
+    if (!ok) {
+      return { success: false, message: 'Cloud database is currently unreachable. Operating offline safely.' };
+    }
+  }
+
+  let syncedSales = 0;
+  let syncedExpenses = 0;
+  let syncedReturns = 0;
+  let syncedPayments = 0;
+
+  try {
+    // 1. Sync Sales from SQLite to MongoDB
+    const sqliteSales = sqliteDb.prepare('SELECT * FROM sales ORDER BY id ASC').all();
+    for (const s of sqliteSales) {
+      const inv = s.invoice_no || `INV-${s.id}`;
+      const exists = await Sale.findOne({ $or: [{ bill_number: inv }, { invoice_no: inv }] });
+      if (!exists) {
+        const items = sqliteDb.prepare('SELECT * FROM sale_items WHERE sale_id = ?').all(s.id);
+        await Sale.create({
+          bill_number: inv,
+          invoice_no: inv,
+          customer_name: s.customer_name || 'Walk-in Customer',
+          subtotal: Number(s.subtotal || 0),
+          discount: Number(s.discount_amount || 0),
+          discount_amount: Number(s.discount_amount || 0),
+          total_amount: Number(s.total_amount || 0),
+          paid_amount: Number(s.paid_amount || s.total_amount || 0),
+          change_amount: Number(s.change_amount || 0),
+          payment_method: s.payment_method || 'Cash',
+          cheque_no: s.cheque_no || '',
+          bank_name: s.bank_name || '',
+          cheque_date: s.cheque_date || '',
+          items: items.map(it => ({
+            medicine_name: it.medicine_name,
+            unit_price: Number(it.unit_price || 0),
+            quantity: Number(it.quantity || 1),
+            total_price: Number(it.subtotal || 0)
+          })),
+          createdAt: s.created_at ? new Date(s.created_at) : new Date()
+        });
+        syncedSales++;
+      }
+    }
+
+    // 2. Sync Expenses from SQLite to MongoDB
+    const sqliteExpenses = sqliteDb.prepare('SELECT * FROM expenses ORDER BY id ASC').all();
+    for (const e of sqliteExpenses) {
+      const num = e.expense_number || `EXP-${e.id}`;
+      const exists = await Expense.findOne({ expense_number: num });
+      if (!exists) {
+        await Expense.create({
+          expense_number: num,
+          title: e.title,
+          category: e.category || 'General',
+          amount: Number(e.amount || 0),
+          expense_date: e.expense_date || new Date().toISOString().split('T')[0],
+          payment_method: e.payment_method || 'Cash',
+          cheque_no: e.cheque_no || '',
+          paid_to: e.paid_to || '',
+          notes: e.notes || '',
+          recorded_by: e.recorded_by || 'Admin',
+          createdAt: e.created_at ? new Date(e.created_at) : new Date()
+        });
+        syncedExpenses++;
+      }
+    }
+
+    // 3. Sync Sale Returns from SQLite to MongoDB
+    const sqliteReturns = sqliteDb.prepare('SELECT * FROM sale_returns ORDER BY id ASC').all();
+    for (const r of sqliteReturns) {
+      const num = r.return_number || `RET-${r.id}`;
+      const exists = await SaleReturn.findOne({ return_number: num });
+      if (!exists) {
+        await SaleReturn.create({
+          return_number: num,
+          invoice_no: r.invoice_no || '',
+          customer_name: r.customer_name || 'Walk-in Customer',
+          medicine_name: r.medicine_name,
+          batch_no: r.batch_no || '',
+          quantity: Number(r.quantity || 1),
+          unit_price: Number(r.unit_price || 0),
+          refund_amount: Number(r.refund_amount || 0),
+          reason: r.reason || 'Customer Request',
+          condition: r.condition || 'Restock to Inventory',
+          refund_method: r.refund_method || 'Cash',
+          processed_by: r.processed_by || 'Admin',
+          notes: r.notes || '',
+          createdAt: r.created_at ? new Date(r.created_at) : new Date()
+        });
+        syncedReturns++;
+      }
+    }
+
+    // 4. Sync Customer Credit Payments from SQLite to MongoDB
+    const sqlitePayments = sqliteDb.prepare('SELECT * FROM customer_credit_payments ORDER BY id ASC').all();
+    for (const p of sqlitePayments) {
+      const num = p.payment_number || `PMT-${p.id}`;
+      const exists = await CustomerCreditPayment.findOne({ payment_number: num });
+      if (!exists) {
+        await CustomerCreditPayment.create({
+          payment_number: num,
+          customer_id: p.customer_id,
+          customer_name: p.customer_name,
+          amount: Number(p.amount || 0),
+          payment_method: p.payment_method || 'Cash',
+          cheque_no: p.cheque_no || '',
+          bank_name: p.bank_name || '',
+          notes: p.notes || '',
+          received_by: p.received_by || 'Admin',
+          createdAt: p.created_at ? new Date(p.created_at) : new Date()
+        });
+        syncedPayments++;
+      }
+    }
+
+    // 5. Also pull latest changes from Cloud down into SQLite
+    await mirrorMongoToSQLite();
+
+    currentMode = 'online';
+    return {
+      success: true,
+      mode: 'online',
+      syncedSales,
+      syncedExpenses,
+      syncedReturns,
+      syncedPayments,
+      message: `✅ Two-way sync completed: ${syncedSales} sales, ${syncedExpenses} expenses, ${syncedReturns} returns synced!`
+    };
+  } catch (err) {
+    console.error('❌ Sync Error:', err.message);
+    return { success: false, error: err.message };
+  }
 }
 
 // ==================== HYBRID CRUD METHODS ====================

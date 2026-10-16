@@ -6,6 +6,8 @@ import { fileURLToPath } from 'url';
 import {
   initHybridDatabase,
   getSystemMode,
+  setSystemMode,
+  syncOfflineDataToCloud,
   authenticateUser,
   getAllUsers,
   getAllMedicines,
@@ -66,9 +68,28 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// ==================== SYSTEM STATUS (ONLINE / OFFLINE) ====================
+// ==================== SYSTEM STATUS & SYNC (ONLINE / OFFLINE) ====================
 app.get('/api/system/status', (req, res) => {
   res.json(getSystemMode());
+});
+
+app.post('/api/system/mode', async (req, res) => {
+  try {
+    const { mode } = req.body;
+    const result = await setSystemMode(mode);
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/system/sync', async (req, res) => {
+  try {
+    const result = await syncOfflineDataToCloud();
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ==================== AUTHENTICATION ====================

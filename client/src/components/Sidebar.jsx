@@ -246,7 +246,17 @@ export default function Sidebar({
               </div>
             )}
           </div>
+        </div>
 
+        {/* Dual Engine Hybrid Status Badge */}
+        <div className="px-3 py-2 bg-slate-800/60 rounded-xl border border-slate-750/70 flex items-center justify-between text-[11px]">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-400"></span>
+            <span className="font-semibold text-slate-300">Hybrid Engine</span>
+          </div>
+          <span className="text-[10px] font-mono text-indigo-300 bg-indigo-950/70 border border-indigo-800/50 px-2 py-0.5 rounded-lg font-bold">
+            Online + Offline
+          </span>
         </div>
 
         {/* User Profile Card */}

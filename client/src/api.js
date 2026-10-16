@@ -241,7 +241,19 @@ export const api = {
   getComprehensiveReports: (params = {}) => {
     const query = new URLSearchParams(params).toString();
     return safeFetch(`${API_BASE}/reports/comprehensive?${query}`).catch(() => null);
-  }
+  },
+
+  // System Mode & Sync (Online / Offline Hybrid)
+  getSystemStatus: () => safeFetch(`${API_BASE}/system/status`).catch(() => ({ success: false, mode: 'offline', cloudConnected: false })),
+  setSystemMode: (mode) => safeFetch(`${API_BASE}/system/mode`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ mode })
+  }),
+  syncCloud: () => safeFetch(`${API_BASE}/system/sync`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  })
 };
 
 export const formatCurrency = (amount) => {
