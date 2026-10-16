@@ -11,10 +11,15 @@ import {
   AlertCircle,
   Calendar,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Printer,
+  Download,
+  FileSpreadsheet
 } from 'lucide-react';
 import { api, formatCurrency, formatDate } from '../api';
 import PayDealerModal from '../components/PayDealerModal';
+import { excelExporter } from '../utils/excelExporter';
+import { pdfGenerator } from '../utils/pdfGenerator';
 
 export default function Suppliers({ 
   suppliers, 
@@ -199,53 +204,91 @@ export default function Suppliers({
 
       {/* Tab 2: Delivery & GRN History */}
       {activeSubTab === 'history' && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
-          <div className="divide-y divide-slate-100">
-            {purchases.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 text-xs">
-                No delivery history recorded yet. Use the "Stock Inward / GRN" button to record medicine deliveries.
-              </div>
-            ) : (
-              purchases.map((p) => {
-                const isExpanded = expandedPurchaseId === p.id;
+        <div className="space-y-4">
+          <div className="flex justify-between items-center bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
+            <span className="text-xs font-bold text-slate-700">
+              Total Goods Received Invoices: {purchases.length}
+            </span>
+            <button
+              onClick={() => {
+                const data = purchases.map((p, idx) => ({
+                  '#': idx + 1,
+                  'GRN #': p.grn_number || `GRN-${p.id}`,
+                  'Date': p.purchase_date,
+                  'Supplier': p.supplier_name,
+                  'Invoice #': p.invoice_number || p.invoice_no,
+                  'Status': p.payment_status,
+                  'Total Amount (LKR)': p.total_amount,
+                  'Amount Paid (LKR)': p.paid_amount,
+                  'Balance Due (LKR)': p.balance_due || (p.total_amount - (p.paid_amount || 0))
+                }));
+                excelExporter.exportToExcel(data, 'Dealer_Purchases_GRN_Report', 'Purchases');
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs cursor-pointer"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Export Purchases to Excel
+            </button>
+          </div>
 
-                return (
-                  <div key={p.id} className="p-4 hover:bg-slate-50/60 transition-colors">
-                    <div 
-                      className="flex items-center justify-between cursor-pointer select-none"
-                      onClick={() => setExpandedPurchaseId(isExpanded ? null : p.id)}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 bg-blue-50 text-blue-700 rounded-xl">
-                          <FileText className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-900 text-sm">{p.invoice_no}</span>
-                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                              p.payment_status === 'Paid' 
-                                ? 'bg-emerald-100 text-emerald-800' 
-                                : p.payment_status === 'Partial' 
-                                  ? 'bg-amber-100 text-amber-800' 
-                                  : 'bg-rose-100 text-rose-800'
-                            }`}>
-                              {p.payment_status}
-                            </span>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="divide-y divide-slate-100">
+              {purchases.length === 0 ? (
+                <div className="p-8 text-center text-slate-400 text-xs">
+                  No delivery history recorded yet. Use the "Stock Inward / GRN" button to record medicine deliveries.
+                </div>
+              ) : (
+                purchases.map((p) => {
+                  const isExpanded = expandedPurchaseId === p.id;
+
+                  return (
+                    <div key={p.id} className="p-4 hover:bg-slate-50/60 transition-colors">
+                      <div 
+                        className="flex items-center justify-between cursor-pointer select-none"
+                        onClick={() => setExpandedPurchaseId(isExpanded ? null : p.id)}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 bg-blue-50 text-blue-700 rounded-xl">
+                            <FileText className="w-4 h-4" />
                           </div>
-                          <p className="text-xs text-slate-500 font-medium">
-                            {p.supplier_name} • {formatDate(p.purchase_date)}
-                          </p>
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-900 text-sm">{p.invoice_no || p.grn_number}</span>
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                                p.payment_status === 'Paid' 
+                                  ? 'bg-emerald-100 text-emerald-800' 
+                                  : p.payment_status === 'Partial' 
+                                    ? 'bg-amber-100 text-amber-800' 
+                                    : 'bg-rose-100 text-rose-800'
+                              }`}>
+                                {p.payment_status}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500 font-medium">
+                              {p.supplier_name} • {formatDate(p.purchase_date)}
+                            </p>
+                          </div>
                         </div>
-                      </div>
 
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="font-extrabold text-slate-900 text-sm">{formatCurrency(p.total_amount)}</p>
-                          <p className="text-[10px] text-slate-400">Paid: {formatCurrency(p.paid_amount)}</p>
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <p className="font-extrabold text-slate-900 text-sm">{formatCurrency(p.total_amount)}</p>
+                            <p className="text-[10px] text-slate-400">Paid: {formatCurrency(p.paid_amount)}</p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              pdfGenerator.generateGRNSlipPDF(p);
+                            }}
+                            className="p-2 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-colors cursor-pointer"
+                            title="Print Official GRN Slip"
+                          >
+                            <Printer className="w-4 h-4" />
+                          </button>
+                          {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                         </div>
-                        {isExpanded ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
                       </div>
-                    </div>
 
                     {/* Expanded Items */}
                     {isExpanded && p.items && (
@@ -280,6 +323,7 @@ export default function Suppliers({
                 );
               })
             )}
+            </div>
           </div>
         </div>
       )}

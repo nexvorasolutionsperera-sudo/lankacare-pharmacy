@@ -36,7 +36,22 @@ import {
   deleteMedicareCatalogItem,
   getAllReloadOrders,
   createReloadOrder,
-  deleteReloadOrder
+  deleteReloadOrder,
+  createUser,
+  updateUser,
+  deleteUser,
+  getCustomerCreditPayments,
+  createCustomerCreditPayment,
+  getAllSaleReturns,
+  createSaleReturn,
+  deleteSaleReturn,
+  getAllExpenses,
+  createExpense,
+  updateExpense,
+  deleteExpense,
+  getAllStockAdjustments,
+  createStockAdjustment,
+  getComprehensiveReports
 } from './hybridDatabase.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -428,6 +443,159 @@ app.delete('/api/reloads/:id', async (req, res) => {
   try {
     await deleteReloadOrder(req.params.id);
     res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== USER REGISTRATION & MANAGEMENT ====================
+app.post('/api/auth/users', async (req, res) => {
+  try {
+    const user = await createUser(req.body);
+    res.status(201).json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/auth/users/:id', async (req, res) => {
+  try {
+    const user = await updateUser(req.params.id, req.body);
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/auth/users/:id', async (req, res) => {
+  try {
+    await deleteUser(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== CUSTOMER CREDIT & PAYMENTS ====================
+app.get('/api/customers/:id/payments', async (req, res) => {
+  try {
+    const payments = await getCustomerCreditPayments(req.params.id);
+    res.json(payments);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/customer-payments', async (req, res) => {
+  try {
+    const payments = await getCustomerCreditPayments();
+    res.json(payments);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/customers/:id/payments', async (req, res) => {
+  try {
+    const payment = await createCustomerCreditPayment({
+      ...req.body,
+      customer_id: req.params.id
+    });
+    res.status(201).json(payment);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== ITEM RETURNS & REFUNDS ====================
+app.get('/api/returns', async (req, res) => {
+  try {
+    const returns = await getAllSaleReturns();
+    res.json(returns);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/returns', async (req, res) => {
+  try {
+    const ret = await createSaleReturn(req.body);
+    res.status(201).json(ret);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/returns/:id', async (req, res) => {
+  try {
+    await deleteSaleReturn(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== OPERATIONAL EXPENSES ====================
+app.get('/api/expenses', async (req, res) => {
+  try {
+    const expenses = await getAllExpenses(req.query);
+    res.json(expenses);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/expenses', async (req, res) => {
+  try {
+    const expense = await createExpense(req.body);
+    res.status(201).json(expense);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.put('/api/expenses/:id', async (req, res) => {
+  try {
+    const expense = await updateExpense(req.params.id, req.body);
+    res.json(expense);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/expenses/:id', async (req, res) => {
+  try {
+    await deleteExpense(req.params.id);
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== STOCK ADJUSTMENTS ====================
+app.get('/api/stock/adjustments', async (req, res) => {
+  try {
+    const adjustments = await getAllStockAdjustments();
+    res.json(adjustments);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/stock/adjust', async (req, res) => {
+  try {
+    const adj = await createStockAdjustment(req.body);
+    res.status(201).json(adj);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== COMPREHENSIVE REPORTS ====================
+app.get('/api/reports/comprehensive', async (req, res) => {
+  try {
+    const reports = await getComprehensiveReports(req.query);
+    res.json(reports);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

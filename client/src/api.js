@@ -173,7 +173,75 @@ export const api = {
   }),
   deleteReloadOrder: (id) => safeFetch(`${API_BASE}/reloads/${id}`, {
     method: 'DELETE'
-  })
+  }),
+
+  // User Management
+  createUser: (data) => safeFetch(`${API_BASE}/auth/users`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }),
+  updateUser: (id, data) => safeFetch(`${API_BASE}/auth/users/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }),
+  deleteUser: (id) => safeFetch(`${API_BASE}/auth/users/${id}`, {
+    method: 'DELETE'
+  }),
+
+  // Customer Credit Payments
+  getCustomerPayments: (customerId) => safeFetch(`${API_BASE}/customers/${customerId}/payments`).catch(() => []),
+  getAllCustomerPayments: () => safeFetch(`${API_BASE}/customer-payments`).catch(() => []),
+  createCustomerPayment: (customerId, data) => safeFetch(`${API_BASE}/customers/${customerId}/payments`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }),
+
+  // Sales Returns
+  getReturns: () => safeFetch(`${API_BASE}/returns`).catch(() => []),
+  createReturn: (data) => safeFetch(`${API_BASE}/returns`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }),
+  deleteReturn: (id) => safeFetch(`${API_BASE}/returns/${id}`, {
+    method: 'DELETE'
+  }),
+
+  // Expenses
+  getExpenses: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return safeFetch(`${API_BASE}/expenses?${query}`).catch(() => []);
+  },
+  createExpense: (data) => safeFetch(`${API_BASE}/expenses`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }),
+  updateExpense: (id, data) => safeFetch(`${API_BASE}/expenses/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }),
+  deleteExpense: (id) => safeFetch(`${API_BASE}/expenses/${id}`, {
+    method: 'DELETE'
+  }),
+
+  // Stock Adjustments
+  getStockAdjustments: () => safeFetch(`${API_BASE}/stock/adjustments`).catch(() => []),
+  createStockAdjustment: (data) => safeFetch(`${API_BASE}/stock/adjust`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data)
+  }),
+
+  // Comprehensive Reports
+  getComprehensiveReports: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return safeFetch(`${API_BASE}/reports/comprehensive?${query}`).catch(() => null);
+  }
 };
 
 export const formatCurrency = (amount) => {

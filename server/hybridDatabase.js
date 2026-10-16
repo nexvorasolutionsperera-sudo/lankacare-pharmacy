@@ -14,7 +14,23 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 import mongoose from 'mongoose';
 import sqliteDb, { initDatabase as initSqlite } from './database.js';
 import { connectMongoDB } from './mongoDatabase.js';
-import { User, Category, Supplier, Medicine, Customer, Doctor, Sale, DealerPurchase, MedicareOrder, ReloadOrder, MedicareCatalog } from './models.js';
+import { 
+  User, 
+  Category, 
+  Supplier, 
+  Medicine, 
+  Customer, 
+  Doctor, 
+  Sale, 
+  DealerPurchase, 
+  MedicareOrder, 
+  ReloadOrder, 
+  MedicareCatalog,
+  CustomerCreditPayment,
+  SaleReturn,
+  Expense,
+  StockAdjustment
+} from './models.js';
 
 let currentMode = 'offline'; // 'online' | 'offline'
 
@@ -68,20 +84,30 @@ function syncSaleToSQLite(saleData) {
     if (existing) return;
 
     const stmtSale = sqliteDb.prepare(`
-      INSERT INTO sales (invoice_no, customer_name, subtotal, discount_amount, total_amount, paid_amount, change_amount, payment_method)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO sales (invoice_no, customer_id, customer_name, subtotal, discount_amount, total_amount, paid_amount, change_amount, payment_method, cheque_no, bank_name, cheque_date)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const saleInfo = stmtSale.run(
       billNo,
+      saleData.customer_id || null,
       saleData.customer_name || 'Walk-in Customer',
       Number(saleData.subtotal || 0),
       Number(saleData.discount || 0),
       Number(saleData.total_amount || 0),
       Number(saleData.paid_amount || saleData.total_amount || 0),
       Number(saleData.change_amount || 0),
-      saleData.payment_method || 'Cash'
+      saleData.payment_method || 'Cash',
+      saleData.cheque_no || '',
+      saleData.bank_name || '',
+      saleData.cheque_date || ''
     );
     const saleId = saleInfo.lastInsertRowid;
+
+    // If Credit payment, update customer's outstanding balance
+    if (saleData.payment_method === 'Credit' && saleData.customer_id) {
+      const creditDue = Math.max(0, Number(saleData.total_amount || 0) - Number(saleData.paid_amount || 0));
+      sqliteDb.prepare('UPDATE customers SET credit_balance = COALESCE(credit_balance, 0) + ? WHERE id = ?').run(creditDue, saleData.customer_id);
+    }
 
     const stmtItem = sqliteDb.prepare(`
       INSERT INTO sale_items (sale_id, medicine_id, medicine_name, unit_price, cost_price, quantity, subtotal)
@@ -742,6 +768,7 @@ export async function createSale(data) {
 
   const salePayload = {
     bill_number,
+    customer_id: customer_id || null,
     customer_name: customer_name || 'Walk-in Customer',
     doctor_name: doctor_name || '',
     cashier_name: cashier_name || 'Staff',
@@ -751,6 +778,9 @@ export async function createSale(data) {
     paid_amount: finalPaid,
     change_amount: finalChange,
     payment_method: payment_method || 'Cash',
+    cheque_no: cheque_no || '',
+    bank_name: bank_name || '',
+    cheque_date: cheque_date || '',
     items: formattedItems
   };
 
@@ -767,6 +797,13 @@ export async function createSale(data) {
           await med.save();
         }
       }
+    }
+
+    if (payment_method === 'Credit' && customer_id) {
+      const creditDue = Math.max(0, finalTotal - finalPaid);
+      try {
+        await Customer.findByIdAndUpdate(customer_id, { $inc: { credit_balance: creditDue } });
+      } catch (e) {}
     }
 
     const sale = await Sale.create(salePayload);
@@ -1106,4 +1143,447 @@ export async function getDashboardStats() {
       weeklySales: []
     };
   }
+}
+
+// ==================== UNLIMITED USER REGISTRATION ====================
+
+export async function createUser(data) {
+  const { username, password, name, role = 'cashier', phone = '', email = '' } = data;
+  try {
+    const existing = sqliteDb.prepare('SELECT id FROM users WHERE username = ?').get(username);
+    if (!existing) {
+      sqliteDb.prepare('INSERT INTO users (username, password, name, role) VALUES (?, ?, ?, ?)').run(username, password, name, role);
+    }
+  } catch (e) {}
+
+  if (currentMode === 'online') {
+    const user = await User.create({ username, password, name, role, phone, email });
+    return { id: user._id, ...user.toObject() };
+  } else {
+    const u = sqliteDb.prepare('SELECT id, username, name, role, created_at FROM users WHERE username = ?').get(username);
+    return u || { username, name, role };
+  }
+}
+
+export async function updateUser(id, data) {
+  try {
+    sqliteDb.prepare('UPDATE users SET name = COALESCE(?, name), role = COALESCE(?, role), password = COALESCE(?, password) WHERE id = ? OR username = ?').run(data.name, data.role, data.password, id, data.username);
+  } catch (e) {}
+
+  if (currentMode === 'online') {
+    const user = await User.findByIdAndUpdate(id, data, { new: true });
+    return user ? { id: user._id, ...user.toObject() } : null;
+  } else {
+    return { id, ...data };
+  }
+}
+
+export async function deleteUser(id) {
+  try { sqliteDb.prepare('DELETE FROM users WHERE id = ?').run(id); } catch (e) {}
+  if (currentMode === 'online') {
+    await User.findByIdAndDelete(id);
+  }
+  return { success: true };
+}
+
+// ==================== CUSTOMER CREDIT PAYMENTS ====================
+
+export async function getCustomerCreditPayments(customerId) {
+  if (currentMode === 'online') {
+    const q = customerId ? { customer_id: customerId } : {};
+    const list = await CustomerCreditPayment.find(q).sort({ createdAt: -1 });
+    return list.map(p => ({ id: p._id, ...p.toObject() }));
+  } else {
+    if (customerId) {
+      return sqliteDb.prepare('SELECT * FROM customer_credit_payments WHERE customer_id = ? ORDER BY created_at DESC').all(customerId);
+    } else {
+      return sqliteDb.prepare('SELECT * FROM customer_credit_payments ORDER BY created_at DESC').all();
+    }
+  }
+}
+
+export async function createCustomerCreditPayment(data) {
+  const payment_number = `PAY-${Date.now().toString().slice(-6)}`;
+  const amt = Number(data.amount || 0);
+
+  try {
+    sqliteDb.prepare(`
+      INSERT INTO customer_credit_payments (payment_number, customer_id, customer_name, amount, payment_method, cheque_no, bank_name, notes, received_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      payment_number,
+      data.customer_id,
+      data.customer_name || 'Customer',
+      amt,
+      data.payment_method || 'Cash',
+      data.cheque_no || '',
+      data.bank_name || '',
+      data.notes || '',
+      data.received_by || 'Admin'
+    );
+
+    sqliteDb.prepare('UPDATE customers SET credit_balance = MAX(0, COALESCE(credit_balance, 0) - ?) WHERE id = ?').run(amt, data.customer_id);
+  } catch (e) {
+    console.warn('SQLite credit payment error:', e.message);
+  }
+
+  if (currentMode === 'online') {
+    if (data.customer_id) {
+      await Customer.findByIdAndUpdate(data.customer_id, {
+        $inc: { credit_balance: -amt }
+      });
+    }
+    const pay = await CustomerCreditPayment.create({
+      payment_number,
+      customer_id: data.customer_id,
+      customer_name: data.customer_name,
+      amount: amt,
+      payment_method: data.payment_method || 'Cash',
+      cheque_no: data.cheque_no || '',
+      bank_name: data.bank_name || '',
+      notes: data.notes || '',
+      received_by: data.received_by || 'Admin'
+    });
+    return { id: pay._id, ...pay.toObject() };
+  } else {
+    return { payment_number, ...data };
+  }
+}
+
+// ==================== ITEM RETURNS (SALES RETURN) ====================
+
+export async function getAllSaleReturns() {
+  if (currentMode === 'online') {
+    const list = await SaleReturn.find().sort({ createdAt: -1 });
+    return list.map(r => ({ id: r._id, ...r.toObject() }));
+  } else {
+    return sqliteDb.prepare('SELECT * FROM sale_returns ORDER BY created_at DESC').all();
+  }
+}
+
+export async function createSaleReturn(data) {
+  const return_number = `RET-${Date.now().toString().slice(-6)}`;
+  const qty = Number(data.quantity || 1);
+  const refundAmt = Number(data.refund_amount || (qty * Number(data.unit_price || 0)));
+
+  try {
+    sqliteDb.prepare(`
+      INSERT INTO sale_returns (return_number, invoice_no, customer_name, medicine_id, medicine_name, batch_no, quantity, unit_price, refund_amount, reason, condition, refund_method, processed_by, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      return_number,
+      data.invoice_no || '',
+      data.customer_name || 'Walk-in Customer',
+      data.medicine_id || null,
+      data.medicine_name,
+      data.batch_no || '',
+      qty,
+      Number(data.unit_price || 0),
+      refundAmt,
+      data.reason || 'Customer Request',
+      data.condition || 'Restock to Inventory',
+      data.refund_method || 'Cash',
+      data.processed_by || 'Admin',
+      data.notes || ''
+    );
+
+    if (data.condition === 'Restock to Inventory') {
+      sqliteDb.prepare('UPDATE medicines SET stock_quantity = stock_quantity + ? WHERE name = ? OR id = ?').run(qty, data.medicine_name, data.medicine_id);
+    }
+  } catch (e) {
+    console.warn('SQLite return error:', e.message);
+  }
+
+  if (currentMode === 'online') {
+    if (data.condition === 'Restock to Inventory') {
+      if (data.medicine_id) {
+        await Medicine.findByIdAndUpdate(data.medicine_id, { $inc: { stock_quantity: qty } });
+      } else {
+        await Medicine.findOneAndUpdate({ name: data.medicine_name }, { $inc: { stock_quantity: qty } });
+      }
+    }
+    const ret = await SaleReturn.create({
+      return_number,
+      ...data,
+      quantity: qty,
+      refund_amount: refundAmt
+    });
+    return { id: ret._id, ...ret.toObject() };
+  } else {
+    return { return_number, ...data };
+  }
+}
+
+export async function deleteSaleReturn(id) {
+  try { sqliteDb.prepare('DELETE FROM sale_returns WHERE id = ?').run(id); } catch (e) {}
+  if (currentMode === 'online') { await SaleReturn.findByIdAndDelete(id); }
+  return { success: true };
+}
+
+// ==================== OPERATIONAL EXPENSES ====================
+
+export async function getAllExpenses(filter = {}) {
+  const { startDate, endDate, category } = filter;
+  if (currentMode === 'online') {
+    const q = {};
+    if (startDate && endDate) {
+      q.expense_date = { $gte: startDate, $lte: endDate };
+    }
+    if (category && category !== 'All') {
+      q.category = category;
+    }
+    const list = await Expense.find(q).sort({ expense_date: -1, createdAt: -1 });
+    return list.map(e => ({ id: e._id, ...e.toObject() }));
+  } else {
+    let sql = 'SELECT * FROM expenses WHERE 1=1';
+    const params = [];
+    if (startDate && endDate) {
+      sql += ' AND expense_date >= ? AND expense_date <= ?';
+      params.push(startDate, endDate);
+    }
+    if (category && category !== 'All') {
+      sql += ' AND category = ?';
+      params.push(category);
+    }
+    sql += ' ORDER BY expense_date DESC, created_at DESC';
+    return sqliteDb.prepare(sql).all(...params);
+  }
+}
+
+export async function createExpense(data) {
+  const expense_number = `EXP-${Date.now().toString().slice(-6)}`;
+  const amt = Number(data.amount || 0);
+  const dateStr = data.expense_date || new Date().toISOString().split('T')[0];
+
+  try {
+    sqliteDb.prepare(`
+      INSERT INTO expenses (expense_number, title, category, amount, expense_date, payment_method, cheque_no, paid_to, notes, recorded_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      expense_number,
+      data.title,
+      data.category || 'General',
+      amt,
+      dateStr,
+      data.payment_method || 'Cash',
+      data.cheque_no || '',
+      data.paid_to || '',
+      data.notes || '',
+      data.recorded_by || 'Admin'
+    );
+  } catch (e) {
+    console.warn('SQLite expense error:', e.message);
+  }
+
+  if (currentMode === 'online') {
+    const exp = await Expense.create({
+      expense_number,
+      title: data.title,
+      category: data.category || 'General',
+      amount: amt,
+      expense_date: dateStr,
+      payment_method: data.payment_method || 'Cash',
+      cheque_no: data.cheque_no || '',
+      paid_to: data.paid_to || '',
+      notes: data.notes || '',
+      recorded_by: data.recorded_by || 'Admin'
+    });
+    return { id: exp._id, ...exp.toObject() };
+  } else {
+    return { expense_number, ...data, amount: amt, expense_date: dateStr };
+  }
+}
+
+export async function updateExpense(id, data) {
+  try {
+    sqliteDb.prepare(`
+      UPDATE expenses SET title = ?, category = ?, amount = ?, expense_date = ?, payment_method = ?, cheque_no = ?, paid_to = ?, notes = ?
+      WHERE id = ? OR expense_number = ?
+    `).run(
+      data.title,
+      data.category,
+      Number(data.amount || 0),
+      data.expense_date,
+      data.payment_method || 'Cash',
+      data.cheque_no || '',
+      data.paid_to || '',
+      data.notes || '',
+      id,
+      id
+    );
+  } catch (e) {}
+
+  if (currentMode === 'online') {
+    const exp = await Expense.findByIdAndUpdate(id, data, { new: true });
+    return exp ? { id: exp._id, ...exp.toObject() } : null;
+  } else {
+    return { id, ...data };
+  }
+}
+
+export async function deleteExpense(id) {
+  try { sqliteDb.prepare('DELETE FROM expenses WHERE id = ? OR expense_number = ?').run(id, id); } catch (e) {}
+  if (currentMode === 'online') { await Expense.findByIdAndDelete(id); }
+  return { success: true };
+}
+
+// ==================== STOCK ADJUSTMENTS ====================
+
+export async function getAllStockAdjustments() {
+  if (currentMode === 'online') {
+    const list = await StockAdjustment.find().sort({ createdAt: -1 });
+    return list.map(a => ({ id: a._id, ...a.toObject() }));
+  } else {
+    return sqliteDb.prepare('SELECT * FROM stock_adjustments ORDER BY created_at DESC').all();
+  }
+}
+
+export async function createStockAdjustment(data) {
+  const adjustment_number = `ADJ-${Date.now().toString().slice(-6)}`;
+  const prev = Number(data.previous_qty || 0);
+  const adj = Number(data.adjusted_qty || 0);
+  const diff = adj - prev;
+
+  try {
+    sqliteDb.prepare(`
+      INSERT INTO stock_adjustments (adjustment_number, medicine_id, medicine_name, batch_no, previous_qty, adjusted_qty, difference, reason, adjusted_by, notes)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      adjustment_number,
+      data.medicine_id || null,
+      data.medicine_name,
+      data.batch_no || '',
+      prev,
+      adj,
+      diff,
+      data.reason,
+      data.adjusted_by || 'Admin',
+      data.notes || ''
+    );
+
+    sqliteDb.prepare('UPDATE medicines SET stock_quantity = ? WHERE name = ? OR id = ?').run(adj, data.medicine_name, data.medicine_id);
+  } catch (e) {
+    console.warn('SQLite stock adjust error:', e.message);
+  }
+
+  if (currentMode === 'online') {
+    if (data.medicine_id) {
+      await Medicine.findByIdAndUpdate(data.medicine_id, { stock_quantity: adj });
+    } else {
+      await Medicine.findOneAndUpdate({ name: data.medicine_name }, { stock_quantity: adj });
+    }
+
+    const rec = await StockAdjustment.create({
+      adjustment_number,
+      ...data,
+      previous_qty: prev,
+      adjusted_qty: adj,
+      difference: diff
+    });
+    return { id: rec._id, ...rec.toObject() };
+  } else {
+    return { adjustment_number, ...data, difference: diff };
+  }
+}
+
+// ==================== COMPREHENSIVE FINANCIAL & REPORT ENGINE ====================
+
+export async function getComprehensiveReports(options = {}) {
+  const { startDate, endDate } = options;
+  const sales = await getAllSales({ startDate, endDate, limit: 10000 });
+  const rawSales = Array.isArray(sales) ? sales : (sales.sales || []);
+  const salesList = rawSales.map(s => ({
+    ...s,
+    id: s.id || s._id,
+    invoice_no: s.invoice_no || s.bill_number || `INV-${s._id?.toString().slice(-6) || 'N/A'}`
+  }));
+
+  const totalSalesRevenue = salesList.reduce((acc, s) => acc + (Number(s.total_amount) || 0), 0);
+  const totalBills = salesList.length;
+
+  const purchases = await getAllDealerPurchases();
+  const filteredPurchases = purchases.filter(p => {
+    if (!startDate || !endDate) return true;
+    const d = (p.purchase_date || p.createdAt || '').toString().split('T')[0];
+    return d >= startDate && d <= endDate;
+  });
+  const totalPurchasesCost = filteredPurchases.reduce((acc, p) => acc + (Number(p.total_amount) || 0), 0);
+  const totalPurchasesPaid = filteredPurchases.reduce((acc, p) => acc + (Number(p.amount_paid) || 0), 0);
+  const totalPurchasesDue = filteredPurchases.reduce((acc, p) => acc + (Number(p.balance_due) || 0), 0);
+
+  const expenses = await getAllExpenses({ startDate, endDate });
+  const totalExpenses = expenses.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+
+  const medicareOrders = await getAllMedicareOrders();
+  const filteredMedicare = medicareOrders.filter(m => {
+    if (!startDate || !endDate) return true;
+    const d = (m.createdAt || m.created_at || '').toString().split('T')[0];
+    return d >= startDate && d <= endDate;
+  });
+  const medicareRevenue = filteredMedicare.reduce((acc, m) => acc + (Number(m.total_amount) || 0), 0);
+
+  const reloadOrders = await getAllReloadOrders();
+  const filteredReloads = reloadOrders.filter(r => {
+    if (!startDate || !endDate) return true;
+    const d = (r.createdAt || r.created_at || '').toString().split('T')[0];
+    return d >= startDate && d <= endDate;
+  });
+  const reloadProfit = filteredReloads.reduce((acc, r) => acc + (Number(r.commission_profit) || (Number(r.amount) - Number(r.cost_amount || 0))), 0);
+
+  // Profit calculations
+  const estimatedCOGS = totalSalesRevenue * 0.70;
+  const grossMedicineProfit = Math.max(0, totalSalesRevenue - estimatedCOGS);
+  const grossIncome = grossMedicineProfit + medicareRevenue + reloadProfit;
+  const netProfit = grossIncome - totalExpenses;
+
+  // Payment methods breakdown
+  const paymentMethods = {};
+  for (const s of salesList) {
+    const pm = s.payment_method || 'Cash';
+    paymentMethods[pm] = (paymentMethods[pm] || 0) + (Number(s.total_amount) || 0);
+  }
+
+  // Expense categories breakdown
+  const expenseCategories = {};
+  for (const e of expenses) {
+    const cat = e.category || 'General';
+    expenseCategories[cat] = (expenseCategories[cat] || 0) + (Number(e.amount) || 0);
+  }
+
+  return {
+    period: { startDate, endDate },
+    sales: {
+      totalRevenue: totalSalesRevenue,
+      totalBills,
+      salesList,
+      paymentMethods
+    },
+    purchases: {
+      totalCost: totalPurchasesCost,
+      totalPaid: totalPurchasesPaid,
+      totalDue: totalPurchasesDue,
+      purchasesList: filteredPurchases
+    },
+    expenses: {
+      totalExpenses,
+      categories: expenseCategories,
+      expensesList: expenses
+    },
+    medicare: {
+      totalRevenue: medicareRevenue,
+      ordersCount: filteredMedicare.length
+    },
+    reloads: {
+      totalProfit: reloadProfit,
+      ordersCount: filteredReloads.length
+    },
+    profitLoss: {
+      grossRevenue: totalSalesRevenue + medicareRevenue,
+      cogs: estimatedCOGS,
+      grossProfit: grossIncome,
+      operatingExpenses: totalExpenses,
+      netProfit,
+      profitMargin: (totalSalesRevenue + medicareRevenue) > 0 ? Math.round((netProfit / (totalSalesRevenue + medicareRevenue)) * 100) : 0
+    }
+  };
 }

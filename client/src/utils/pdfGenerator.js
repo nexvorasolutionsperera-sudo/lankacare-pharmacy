@@ -529,5 +529,294 @@ export const pdfGenerator = {
     doc.text('Authorized Medical Officer / Lab', 148, sigY + 4);
 
     doc.save(`Aaush-Medicare-WorkOrder-${orderNo}.pdf`);
+  },
+
+  // 4. PURCHASING / GRN REPORT PDF
+  generatePurchasesReportPDF: (purchasesList, totalPurchased, totalPaid, totalDue, startDate, endDate) => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    // Banner
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 210, 26, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.setTextColor(255, 255, 255);
+    doc.text('AAUSH PHARMACY', 14, 11);
+
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Dealer Purchasing & Goods Inward Report (${startDate} to ${endDate})`, 14, 18);
+    doc.text(`Generated: ${new Date().toLocaleString('en-GB')}`, 196, 18, { align: 'right' });
+
+    // Summary KPI Block
+    const kpiData = [
+      ['Total Stock Inward Value', fmtLKR(totalPurchased), 'Total Dues Settled', fmtLKR(totalPaid)],
+      ['Outstanding Dealer Balance', fmtLKR(totalDue), 'Total GRN Invoices', `${(purchasesList || []).length} Records`]
+    ];
+
+    autoTable(doc, {
+      startY: 32,
+      margin: { left: 14, right: 14 },
+      theme: 'grid',
+      headStyles: { fillColor: [240, 245, 240] },
+      styles: { fontSize: 8.5, cellPadding: 2.5 },
+      body: kpiData
+    });
+
+    const rows = (purchasesList || []).map((p, idx) => [
+      idx + 1,
+      p.grn_number || `GRN-${p.id || idx + 1}`,
+      p.purchase_date || p.createdAt?.split?.('T')[0] || '-',
+      p.supplier_name || 'Dealer',
+      p.invoice_number || p.invoice_no || '-',
+      p.payment_status || 'Unpaid',
+      fmtLKR(p.total_amount),
+      fmtLKR(p.amount_paid || p.paid_amount),
+      fmtLKR(p.balance_due)
+    ]);
+
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 6,
+      margin: { left: 14, right: 14 },
+      headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255] },
+      styles: { fontSize: 8, cellPadding: 2 },
+      head: [['#', 'GRN #', 'Date', 'Supplier / Dealer', 'Inv #', 'Status', 'Total Value', 'Paid', 'Due']],
+      body: rows.length ? rows : [['-', '-', '-', 'No purchases recorded in range', '-', '-', '-', '-', '-']],
+      columnStyles: {
+        0: { cellWidth: 8, halign: 'center' },
+        6: { halign: 'right', fontStyle: 'bold' },
+        7: { halign: 'right' },
+        8: { halign: 'right', textColor: [225, 29, 72], fontStyle: 'bold' }
+      }
+    });
+
+    doc.save(`Aaush-Purchasing-Report-${startDate}-to-${endDate}.pdf`);
+  },
+
+  // 5. OPERATING EXPENSES REPORT PDF
+  generateExpensesReportPDF: (expensesList, totalExpenses, startDate, endDate) => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 210, 26, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.setTextColor(255, 255, 255);
+    doc.text('AAUSH PHARMACY', 14, 11);
+
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Operating & Administrative Expenses Report (${startDate} to ${endDate})`, 14, 18);
+    doc.text(`Generated: ${new Date().toLocaleString('en-GB')}`, 196, 18, { align: 'right' });
+
+    // Summary box
+    autoTable(doc, {
+      startY: 32,
+      margin: { left: 14, right: 14 },
+      theme: 'grid',
+      styles: { fontSize: 9, cellPadding: 3 },
+      body: [
+        ['Total Operating Expenses Incurred', fmtLKR(totalExpenses)],
+        ['Total Expense Entries Recorded', `${(expensesList || []).length} Entries`]
+      ]
+    });
+
+    const rows = (expensesList || []).map((e, idx) => [
+      idx + 1,
+      e.expense_number || `EXP-${idx + 1}`,
+      e.expense_date || '-',
+      e.category || 'General',
+      e.title,
+      e.payment_method || 'Cash',
+      e.paid_to || '-',
+      fmtLKR(e.amount)
+    ]);
+
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 6,
+      margin: { left: 14, right: 14 },
+      headStyles: { fillColor: [180, 83, 9], textColor: [255, 255, 255] },
+      styles: { fontSize: 8, cellPadding: 2 },
+      head: [['#', 'Voucher #', 'Date', 'Category', 'Description / Title', 'Method', 'Paid To', 'Amount']],
+      body: rows.length ? rows : [['-', '-', '-', 'No expenses recorded in period', '-', '-', '-', '-']],
+      columnStyles: {
+        0: { cellWidth: 8, halign: 'center' },
+        7: { halign: 'right', fontStyle: 'bold' }
+      }
+    });
+
+    doc.save(`Aaush-Expenses-Report-${startDate}-to-${endDate}.pdf`);
+  },
+
+  // 6. PROFIT & LOSS STATEMENT PDF
+  generateProfitLossReportPDF: (reportData, startDate, endDate) => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 210, 26, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(15);
+    doc.setTextColor(255, 255, 255);
+    doc.text('AAUSH PHARMACY', 14, 11);
+
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Comprehensive Profit & Loss Statement (${startDate} to ${endDate})`, 14, 18);
+    doc.text(`Generated: ${new Date().toLocaleString('en-GB')}`, 196, 18, { align: 'right' });
+
+    const pl = reportData?.profitLoss || {};
+    const sales = reportData?.sales || {};
+    const medicare = reportData?.medicare || {};
+    const reloads = reportData?.reloads || {};
+    const expenses = reportData?.expenses || {};
+
+    const tableData = [
+      ['INCOME & REVENUES', ''],
+      ['  Gross Sales (Medicines, Grocery, Bookshop)', fmtLKR(sales.totalRevenue)],
+      ['  Medicare & Lab Test Diagnostic Income', fmtLKR(medicare.totalRevenue)],
+      ['  Photocopy, Printing & Mobile Reload Profit', fmtLKR(reloads.totalProfit)],
+      ['TOTAL GROSS REVENUE', fmtLKR(pl.grossRevenue || 0)],
+      ['', ''],
+      ['COST OF GOODS SOLD (COGS)', ''],
+      ['  Estimated Wholesale Drug & Inventory Cost (70%)', `(${fmtLKR(pl.cogs || 0)})`],
+      ['GROSS TRADING PROFIT', fmtLKR(pl.grossProfit || 0)],
+      ['', ''],
+      ['OPERATING EXPENSES', ''],
+      ['  Total Shop Overheads (Rent, Bills, Staff, Maintenance)', `(${fmtLKR(expenses.totalExpenses || 0)})`],
+      ['', ''],
+      ['NET OPERATING PROFIT / (LOSS)', fmtLKR(pl.netProfit || 0)],
+      ['Net Profit Margin %', `${pl.profitMargin || 0}%`]
+    ];
+
+    autoTable(doc, {
+      startY: 34,
+      margin: { left: 14, right: 14 },
+      theme: 'grid',
+      styles: { fontSize: 9, cellPadding: 3, font: 'helvetica' },
+      body: tableData,
+      columnStyles: {
+        0: { cellWidth: 130 },
+        1: { cellWidth: 50, halign: 'right', fontStyle: 'bold' }
+      },
+      didParseCell: (data) => {
+        if (data.row.index === 0 || data.row.index === 6 || data.row.index === 10) {
+          data.cell.styles.fillColor = [241, 245, 249];
+          data.cell.styles.fontStyle = 'bold';
+        }
+        if (data.row.index === 4 || data.row.index === 8) {
+          data.cell.styles.fillColor = [236, 253, 245];
+          data.cell.styles.textColor = [5, 150, 105];
+          data.cell.styles.fontStyle = 'bold';
+        }
+        if (data.row.index === 13) {
+          data.cell.styles.fillColor = [224, 231, 255];
+          data.cell.styles.textColor = [30, 64, 175];
+          data.cell.styles.fontStyle = 'bold';
+          data.cell.styles.fontSize = 11;
+        }
+      }
+    });
+
+    doc.save(`Aaush-Profit-Loss-Statement-${startDate}-to-${endDate}.pdf`);
+  },
+
+  // 7. GOODS RECEIVED NOTE (GRN) SLIP PDF
+  generateGRNSlipPDF: (grn) => {
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    // Header
+    doc.setFillColor(30, 41, 59);
+    doc.rect(0, 0, 210, 26, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(14);
+    doc.setTextColor(255, 255, 255);
+    doc.text('AAUSH PHARMACY - GOODS RECEIVED NOTE (GRN)', 14, 11);
+
+    doc.setFontSize(8);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Official Inward Stock Receipt Voucher & Goods Verification Slip', 14, 18);
+    doc.text(`GRN #: ${grn.grn_number || `GRN-${grn.id}`}`, 196, 18, { align: 'right' });
+
+    // Meta box
+    const metaData = [
+      ['Supplier / Distributor:', grn.supplier_name || 'Dealer', 'GRN Date:', grn.purchase_date || grn.createdAt?.split?.('T')[0] || '-'],
+      ['Dealer Invoice #:', grn.invoice_number || grn.invoice_no || 'N/A', 'Payment Status:', grn.status || grn.payment_status || 'Unpaid'],
+      ['Payment Method:', grn.payment_method || 'Cash', 'Payment Details:', grn.cheque_no ? `Cheque #${grn.cheque_no}` : 'Direct Settlement']
+    ];
+
+    autoTable(doc, {
+      startY: 32,
+      margin: { left: 14, right: 14 },
+      theme: 'grid',
+      styles: { fontSize: 8.5, cellPadding: 2 },
+      body: metaData
+    });
+
+    // Items table
+    const items = grn.items || [];
+    const itemRows = items.map((it, idx) => [
+      idx + 1,
+      it.medicine_name || it.name,
+      it.batch_number || it.batch_no || '-',
+      it.expiry_date || '-',
+      it.quantity,
+      it.bonus_quantity || 0,
+      fmtLKR(it.cost_price),
+      fmtLKR(it.selling_price || 0),
+      fmtLKR(it.total_cost || (it.cost_price * it.quantity))
+    ]);
+
+    autoTable(doc, {
+      startY: doc.lastAutoTable.finalY + 6,
+      margin: { left: 14, right: 14 },
+      headStyles: { fillColor: [30, 41, 59], textColor: [255, 255, 255] },
+      styles: { fontSize: 8, cellPadding: 2 },
+      head: [['#', 'Item Description', 'Batch', 'Expiry', 'Qty', 'Bonus', 'Cost Price', 'Selling Price', 'Total Cost']],
+      body: itemRows.length ? itemRows : [['-', 'No items recorded', '-', '-', '-', '-', '-', '-', '-']],
+      columnStyles: {
+        0: { cellWidth: 8, halign: 'center' },
+        4: { halign: 'center' },
+        5: { halign: 'center' },
+        6: { halign: 'right' },
+        7: { halign: 'right' },
+        8: { halign: 'right', fontStyle: 'bold' }
+      }
+    });
+
+    // Totals
+    const finalY = doc.lastAutoTable.finalY + 6;
+    doc.setFillColor(248, 250, 252);
+    doc.rect(120, finalY, 76, 24, 'FD');
+
+    doc.setFontSize(8.5);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(30, 30, 30);
+    doc.text('Total Invoice Value:', 125, finalY + 6);
+    doc.text(fmtLKR(grn.total_amount), 190, finalY + 6, { align: 'right' });
+
+    doc.text('Amount Paid / Settled:', 125, finalY + 12);
+    doc.text(fmtLKR(grn.amount_paid || grn.paid_amount || 0), 190, finalY + 12, { align: 'right' });
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(225, 29, 72);
+    doc.text('Outstanding Balance Due:', 125, finalY + 18);
+    doc.text(fmtLKR(grn.balance_due || (grn.total_amount - (grn.amount_paid || 0))), 190, finalY + 18, { align: 'right' });
+
+    // Signatures
+    const sigY = finalY + 36;
+    doc.setDrawColor(203, 213, 225);
+    doc.line(14, sigY, 65, sigY);
+    doc.line(145, sigY, 196, sigY);
+
+    doc.setFontSize(7.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text('Goods Received & Checked By', 16, sigY + 4);
+    doc.text('Authorized Pharmacist / Manager', 148, sigY + 4);
+
+    doc.save(`Aaush-GRN-${grn.grn_number || grn.id}.pdf`);
   }
 };

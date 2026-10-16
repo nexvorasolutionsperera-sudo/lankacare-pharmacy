@@ -13,10 +13,14 @@ import {
   Download,
   Pill,
   ShoppingBag,
-  BookOpen
+  BookOpen,
+  FileSpreadsheet,
+  SlidersHorizontal,
+  AlertCircle
 } from 'lucide-react';
 import { api, formatCurrency, formatDate } from '../api';
 import { pdfGenerator } from '../utils/pdfGenerator';
+import { excelExporter } from '../utils/excelExporter';
 
 export default function Medicines({ 
   medicines, 
@@ -37,6 +41,15 @@ export default function Medicines({
   const [statusFilter, setStatusFilter] = useState('all');
   const [itemTypeFilter, setItemTypeFilter] = useState('all'); // 'all' | 'medicine' | 'grocery' | 'bookshop'
   const [deletingId, setDeletingId] = useState(null);
+
+  // Stock Adjustment States
+  const [isStockAdjOpen, setIsStockAdjOpen] = useState(false);
+  const [adjMedId, setAdjMedId] = useState('');
+  const [adjPhysicalQty, setAdjPhysicalQty] = useState('');
+  const [adjReason, setAdjReason] = useState('Stock Count Correction');
+  const [adjNotes, setAdjNotes] = useState('');
+  const [adjError, setAdjError] = useState('');
+  const [adjSuccess, setAdjSuccess] = useState('');
 
   const isBookshopItem = (m) => {
     return (m.category && (m.category.includes('Book') || m.category.includes('Stationery'))) ||
@@ -136,43 +149,84 @@ export default function Medicines({
           </p>
         </div>
 
-        {/* Action Buttons: PDF + Separate Add Buttons (Add buttons hidden for Cashier) */}
+        {/* Action Buttons: PDF + Excel + Stock Adjust + Separate Add Buttons */}
         <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => pdfGenerator.generateInventoryPDF(medicines)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs shadow-sm transition-all active:scale-95 cursor-pointer"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-700 hover:bg-slate-800 text-white font-bold text-xs shadow-sm transition-all active:scale-95 cursor-pointer"
           >
             <Download className="w-4 h-4" />
             <span>PDF</span>
           </button>
 
+          <button
+            onClick={() => {
+              const data = medicines.map((m, idx) => ({
+                '#': idx + 1,
+                'Name': m.name,
+                'Generic Name': m.generic_name || '-',
+                'Category': m.category || m.category_name || 'General',
+                'Batch No': m.batch_no || m.batch_number || '-',
+                'Barcode': m.barcode || '-',
+                'Cost Price (LKR)': m.cost_price,
+                'Selling Price (LKR)': m.selling_price,
+                'Stock Qty': m.stock_quantity,
+                'Reorder Level': m.min_stock_alert || m.reorder_level || 10,
+                'Expiry Date': m.expiry_date,
+                'Rack Location': m.rack_location || '-'
+              }));
+              excelExporter.exportToExcel(data, 'Medicine_Stock_Inventory', 'StockInventory');
+            }}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all active:scale-95 cursor-pointer"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Excel</span>
+          </button>
+
           {!isCashier && (
             <>
+              {/* Stock Maintenance / Adjustment Button */}
+              <button
+                onClick={() => {
+                  setAdjMedId('');
+                  setAdjPhysicalQty('');
+                  setAdjReason('Stock Count Correction');
+                  setAdjNotes('');
+                  setAdjError('');
+                  setAdjSuccess('');
+                  setIsStockAdjOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md shadow-purple-600/30 transition-all active:scale-95 cursor-pointer"
+              >
+                <SlidersHorizontal className="w-4 h-4" />
+                <span>Stock Adjust (තොග සංශෝධනය)</span>
+              </button>
+
               {/* Separate Add Medicine */}
               <button
                 onClick={handleAddMedicineClick}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-indigo-600/30 transition-all active:scale-95 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs shadow-md shadow-indigo-600/30 transition-all active:scale-95 cursor-pointer"
               >
                 <Pill className="w-4 h-4" />
-                <span>+ Add Medicine (ඖෂධ)</span>
+                <span>+ Add Medicine</span>
               </button>
 
               {/* Separate Add Grocery */}
               <button
                 onClick={handleAddGroceryClick}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-amber-600/30 transition-all active:scale-95 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-md shadow-amber-600/30 transition-all active:scale-95 cursor-pointer"
               >
                 <ShoppingBag className="w-4 h-4" />
-                <span>+ Add Grocery (සිල්ලර)</span>
+                <span>+ Add Grocery</span>
               </button>
 
               {/* Separate Add Book / Stationery */}
               <button
                 onClick={handleAddBookshopClick}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-sky-600/30 transition-all active:scale-95 cursor-pointer"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs shadow-md shadow-sky-600/30 transition-all active:scale-95 cursor-pointer"
               >
                 <BookOpen className="w-4 h-4" />
-                <span>+ Add Book / Stationery (පොත්පත්)</span>
+                <span>+ Add Book</span>
               </button>
             </>
           )}
@@ -440,6 +494,156 @@ export default function Medicines({
           </table>
         </div>
       </div>
+
+      {/* Stock Adjustment Modal */}
+      {isStockAdjOpen && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-md p-6 shadow-2xl border border-slate-100 dark:border-slate-800 animate-in fade-in zoom-in-95 duration-150">
+            <h3 className="text-lg font-black text-slate-900 dark:text-white mb-1">
+              තොග සංශෝධනය (Stock Reconciliation & Adjustment)
+            </h3>
+            <p className="text-xs text-slate-500 mb-4">
+              Reconcile physical stock count with system inventory and log adjustment reasons
+            </p>
+
+            {adjError && (
+              <div className="mb-4 p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-600" />
+                {adjError}
+              </div>
+            )}
+
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setAdjError('');
+                const med = medicines.find(m => String(m.id || m._id) === String(adjMedId));
+                if (!med) {
+                  setAdjError('කරුණාකර ඖෂධය තෝරන්න (Please select item)');
+                  return;
+                }
+                const newQty = Number(adjPhysicalQty);
+                if (isNaN(newQty) || newQty < 0) {
+                  setAdjError('වලංගු තොග ප්‍රමාණයක් ඇතුළත් කරන්න (Valid quantity required)');
+                  return;
+                }
+
+                try {
+                  await api.createStockAdjustment({
+                    medicine_id: med.id || med._id,
+                    medicine_name: med.name,
+                    batch_no: med.batch_no || med.batch_number || '',
+                    previous_qty: med.stock_quantity,
+                    adjusted_qty: newQty,
+                    reason: adjReason,
+                    adjusted_by: currentUser?.name || 'Admin',
+                    notes: adjNotes
+                  });
+                  setIsStockAdjOpen(false);
+                  if (onRefresh) onRefresh();
+                } catch (err) {
+                  setAdjError(err.message || 'Stock adjustment failed');
+                }
+              }}
+              className="space-y-3.5"
+            >
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  භාණ්ඩය / ඖෂධය (Select Item) *
+                </label>
+                <select
+                  required
+                  value={adjMedId}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setAdjMedId(id);
+                    const m = medicines.find(x => String(x.id || x._id) === String(id));
+                    if (m) setAdjPhysicalQty(String(m.stock_quantity));
+                  }}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold focus:outline-purple-500"
+                >
+                  <option value="">-- Choose Item from Inventory --</option>
+                  {medicines.map(m => (
+                    <option key={m.id || m._id} value={m.id || m._id}>
+                      {m.name} (Current: {m.stock_quantity} units)
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {adjMedId && (
+                <div className="p-2.5 bg-slate-50 dark:bg-slate-800/60 rounded-xl text-xs flex justify-between">
+                  <span className="text-slate-500">පද්ධතියේ ඇති තොගය (Current):</span>
+                  <span className="font-black text-slate-800 dark:text-white">
+                    {medicines.find(m => String(m.id || m._id) === String(adjMedId))?.stock_quantity} units
+                  </span>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  නව භෞතික තොගය (New Physical Count) *
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  required
+                  value={adjPhysicalQty}
+                  onChange={(e) => setAdjPhysicalQty(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-black text-purple-600 focus:outline-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  හේතුව (Reason for Adjustment) *
+                </label>
+                <select
+                  value={adjReason}
+                  onChange={(e) => setAdjReason(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-semibold focus:outline-purple-500"
+                >
+                  <option value="Stock Count Correction">Stock Count Correction (භෞතික ගණන්කිරීමේ නිවැරදි කිරීම)</option>
+                  <option value="Damaged Stock">Damaged Stock (කල් ඉකුත් නොවී හානිවීම්)</option>
+                  <option value="Expired Goods">Expired Goods (කල් ඉකුත් වූ තොග ඉවත් කිරීම)</option>
+                  <option value="Returned to Supplier">Returned to Supplier (ඩීලර්ට ආපසු යැවීම)</option>
+                  <option value="Theft or Lost">Theft or Lost (අස්ථානගත වීම්)</option>
+                  <option value="Internal Pharmacy Use">Internal Pharmacy Use (සායනික භාවිතය)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
+                  අමතර සටහන් (Notes)
+                </label>
+                <input
+                  type="text"
+                  value={adjNotes}
+                  onChange={(e) => setAdjNotes(e.target.value)}
+                  placeholder="Optional notes"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs focus:outline-purple-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setIsStockAdjOpen(false)}
+                  className="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 font-bold text-xs cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs shadow-md cursor-pointer"
+                >
+                  Confirm Stock Update
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
     </div>
   );

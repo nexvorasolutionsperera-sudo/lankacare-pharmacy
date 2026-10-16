@@ -17,7 +17,9 @@ import {
   ShieldCheck,
   UserCheck,
   Activity,
-  Smartphone
+  Smartphone,
+  RotateCcw,
+  Receipt
 } from 'lucide-react';
 
 export default function Sidebar({ 
@@ -56,12 +58,14 @@ export default function Sidebar({
       badge: lowStockCount > 0 ? lowStockCount : null,
       badgeColor: 'bg-amber-500'
     },
+    { id: 'returns', label: 'භාණ්ඩ ආපසු (Item Returns)', icon: RotateCcw },
     { 
       id: 'dealers', 
-      label: t.dealers, 
+      label: t.dealers || 'Dealers & GRN', 
       icon: Truck,
       adminOnly: true
     },
+    { id: 'expenses', label: 'වියදම් (Expenses)', icon: Receipt, adminOnly: true },
     { 
       id: 'alerts', 
       label: t.alerts, 
@@ -70,10 +74,11 @@ export default function Sidebar({
       badgeColor: 'bg-rose-500',
       adminOnly: true
     },
-    { id: 'customers', label: t.customersDocs, icon: Users },
+    { id: 'customers', label: t.customersDocs || 'Patients & Credit', icon: Users },
     { id: 'medicare', label: t.medicareServices || 'Medicare & Lab Tests', icon: Activity },
     { id: 'reloads', label: t.reloadServices || 'Photocopy & Reload', icon: Smartphone },
-    { id: 'reports', label: t.reports, icon: BarChart3, adminOnly: true }
+    { id: 'reports', label: t.reports, icon: BarChart3, adminOnly: true },
+    { id: 'users', label: 'පරිශීලකයින් (Staff Users)', icon: UserCheck, adminOnly: true }
   ];
 
   const navItems = isCashier ? allNavItems.filter(item => !item.adminOnly) : allNavItems;

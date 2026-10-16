@@ -11,6 +11,9 @@ import MedicareServices from './pages/MedicareServices';
 import ReloadServices from './pages/ReloadServices';
 import Reports from './pages/Reports';
 import LoginPage from './pages/LoginPage';
+import ReturnsPage from './pages/Returns';
+import ExpensesPage from './pages/Expenses';
+import UsersPage from './pages/Users';
 
 import AddMedicineModal from './components/AddMedicineModal';
 import AddDealerModal from './components/AddDealerModal';
@@ -51,7 +54,7 @@ export default function App() {
 
   // Role Guard: Automatically switch Cashier away from Admin-only screens
   useEffect(() => {
-    if (isCashier && ['dashboard', 'dealers', 'alerts', 'reports'].includes(activeTab)) {
+    if (isCashier && ['dashboard', 'dealers', 'alerts', 'reports', 'expenses', 'users'].includes(activeTab)) {
       setActiveTab('pos');
     }
   }, [currentUser, isCashier, activeTab]);
@@ -300,6 +303,28 @@ export default function App() {
 
           {!isCashier && activeTab === 'reports' && (
             <Reports t={t} />
+          )}
+
+          {activeTab === 'returns' && (
+            <ReturnsPage
+              medicines={medicines}
+              currentUser={currentUser}
+              t={t}
+            />
+          )}
+
+          {!isCashier && activeTab === 'expenses' && (
+            <ExpensesPage
+              currentUser={currentUser}
+              t={t}
+            />
+          )}
+
+          {!isCashier && activeTab === 'users' && (
+            <UsersPage
+              currentUser={currentUser}
+              t={t}
+            />
           )}
         </main>
 

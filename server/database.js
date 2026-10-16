@@ -189,7 +189,81 @@ export function initDatabase() {
       default_fasting TEXT DEFAULT 'Not Required',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+
+    CREATE TABLE IF NOT EXISTS customer_credit_payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      payment_number TEXT UNIQUE NOT NULL,
+      customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      customer_name TEXT NOT NULL,
+      amount REAL NOT NULL,
+      payment_method TEXT DEFAULT 'Cash',
+      cheque_no TEXT,
+      bank_name TEXT,
+      notes TEXT,
+      received_by TEXT DEFAULT 'Admin',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS sale_returns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      return_number TEXT UNIQUE NOT NULL,
+      invoice_no TEXT,
+      customer_name TEXT DEFAULT 'Walk-in Customer',
+      medicine_id INTEGER REFERENCES medicines(id) ON DELETE SET NULL,
+      medicine_name TEXT NOT NULL,
+      batch_no TEXT,
+      quantity INTEGER NOT NULL,
+      unit_price REAL NOT NULL,
+      refund_amount REAL NOT NULL,
+      reason TEXT DEFAULT 'Customer Request',
+      condition TEXT DEFAULT 'Restock to Inventory',
+      refund_method TEXT DEFAULT 'Cash',
+      processed_by TEXT DEFAULT 'Admin',
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS expenses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      expense_number TEXT UNIQUE NOT NULL,
+      title TEXT NOT NULL,
+      category TEXT NOT NULL DEFAULT 'General',
+      amount REAL NOT NULL,
+      expense_date TEXT NOT NULL,
+      payment_method TEXT DEFAULT 'Cash',
+      cheque_no TEXT,
+      paid_to TEXT,
+      notes TEXT,
+      recorded_by TEXT DEFAULT 'Admin',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS stock_adjustments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      adjustment_number TEXT UNIQUE NOT NULL,
+      medicine_id INTEGER REFERENCES medicines(id) ON DELETE SET NULL,
+      medicine_name TEXT NOT NULL,
+      batch_no TEXT,
+      previous_qty INTEGER NOT NULL,
+      adjusted_qty INTEGER NOT NULL,
+      difference INTEGER NOT NULL,
+      reason TEXT NOT NULL,
+      adjusted_by TEXT DEFAULT 'Admin',
+      notes TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
   `);
+
+  // Safe schema migrations for existing tables
+  try { db.exec('ALTER TABLE customers ADD COLUMN credit_balance REAL DEFAULT 0'); } catch (e) {}
+  try { db.exec('ALTER TABLE customers ADD COLUMN credit_limit REAL DEFAULT 0'); } catch (e) {}
+  try { db.exec('ALTER TABLE sales ADD COLUMN cheque_no TEXT'); } catch (e) {}
+  try { db.exec('ALTER TABLE sales ADD COLUMN bank_name TEXT'); } catch (e) {}
+  try { db.exec('ALTER TABLE sales ADD COLUMN cheque_date TEXT'); } catch (e) {}
+  try { db.exec('ALTER TABLE dealer_purchases ADD COLUMN payment_method TEXT DEFAULT "Cash"'); } catch (e) {}
+  try { db.exec('ALTER TABLE dealer_purchases ADD COLUMN cheque_no TEXT'); } catch (e) {}
+  try { db.exec('ALTER TABLE dealer_purchases ADD COLUMN cheque_date TEXT'); } catch (e) {}
+  try { db.exec('ALTER TABLE dealer_purchases ADD COLUMN grn_number TEXT'); } catch (e) {}
 
   // Seed default users if not present
   const userCount = db.prepare('SELECT COUNT(*) as count FROM users').get().count;

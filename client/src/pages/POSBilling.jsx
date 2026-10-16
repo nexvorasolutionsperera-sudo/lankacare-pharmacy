@@ -39,6 +39,8 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [cashTendered, setCashTendered] = useState('');
   const [cardLast4, setCardLast4] = useState('');
+  const [chequeNo, setChequeNo] = useState('');
+  const [bankName, setBankName] = useState('');
   
   // Customer & Doctor inputs
   const [selectedCustomerId, setSelectedCustomerId] = useState('');
@@ -398,9 +400,16 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
       return;
     }
 
-    const effectiveTendered = paymentMethod === 'Card' 
+    if (paymentMethod === 'Credit' && !selectedCustomerId) {
+      setError('ණයට බිල්පත් නිකුත් කිරීමට ලියාපදිංචි පාරිභෝගිකයෙකු තෝරාගත යුතුය (Please select a registered customer for credit sale)');
+      return;
+    }
+
+    const effectiveTendered = (paymentMethod === 'Card' || paymentMethod === 'Cheque') 
       ? grandTotal 
-      : (cashTendered !== '' ? Number(cashTendered) : grandTotal);
+      : (paymentMethod === 'Credit' 
+          ? (cashTendered !== '' ? Number(cashTendered) : 0)
+          : (cashTendered !== '' ? Number(cashTendered) : grandTotal));
 
     if (paymentMethod === 'Cash' && cashTendered !== '' && effectiveTendered < grandTotal) {
       setError(`දුන් මුදල (${formatCurrency(effectiveTendered)}) ශුද්ධ මුදලට (${formatCurrency(grandTotal)}) වඩා අඩුය! තවත් ${formatCurrency(grandTotal - effectiveTendered)} ක් අවශ්‍යයි.`);
@@ -426,9 +435,11 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
         discount: Number(totalAllDiscounts.toFixed(2)) || 0,
         total_amount: Number(grandTotal.toFixed(2)) || 0,
         paid_amount: Number(effectiveTendered.toFixed(2)),
-        change_amount: paymentMethod === 'Card' ? 0 : Math.max(0, Number((effectiveTendered - grandTotal).toFixed(2))),
+        change_amount: (paymentMethod === 'Card' || paymentMethod === 'Cheque' || paymentMethod === 'Credit') ? 0 : Math.max(0, Number((effectiveTendered - grandTotal).toFixed(2))),
         payment_method: paymentMethod,
         card_last4: paymentMethod === 'Card' ? cardLast4 : null,
+        cheque_no: paymentMethod === 'Cheque' ? chequeNo : '',
+        bank_name: paymentMethod === 'Cheque' ? bankName : '',
         items: cart.map(item => ({
           medicine_id: item.medicine_id,
           medicine_name: item.medicine_name,
@@ -930,8 +941,8 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
           </div>
 
           {/* Payment Method Selector */}
-          <div className="grid grid-cols-3 gap-1.5 pt-1">
-            {['Cash', 'Card', 'Credit'].map((pm) => (
+          <div className="grid grid-cols-4 gap-1.5 pt-1">
+            {['Cash', 'Card', 'Cheque', 'Credit'].map((pm) => (
               <button
                 key={pm}
                 type="button"
@@ -944,13 +955,14 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
               >
                 {pm === 'Cash' && <Banknote className="w-3.5 h-3.5" />}
                 {pm === 'Card' && <CreditCard className="w-3.5 h-3.5" />}
-                {pm === 'Credit' && <FileText className="w-3.5 h-3.5" />}
+                {pm === 'Cheque' && <FileText className="w-3.5 h-3.5" />}
+                {pm === 'Credit' && <Users className="w-3.5 h-3.5" />}
                 <span>{pm}</span>
               </button>
             ))}
           </div>
 
-          {/* Card Payment Info Box (Card Mode) */}
+          {/* Card Payment Info Box */}
           {paymentMethod === 'Card' && (
             <div className="p-3 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 border border-blue-200 dark:border-blue-800 space-y-2">
               <div className="flex items-center justify-between">
@@ -964,7 +976,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                  Card Last 4 Digits (අවසාන අංක 4):
+                  Card Last 4 Digits:
                 </span>
                 <input
                   type="text"
@@ -975,8 +987,72 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                   className="w-32 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono font-bold text-center text-slate-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 />
               </div>
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 italic">
-                * ස්වයංක්‍රීයව ශුද්ධ මුදලට සමාන මුදලක් ගෙවූ බව සටහන් වේ. ඉතිරි මුදලක් ගණනය නොවේ.
+            </div>
+          )}
+
+          {/* Cheque Payment Info Box */}
+          {paymentMethod === 'Cheque' && (
+            <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                  <FileText className="w-4 h-4 text-amber-600" />
+                  Cheque Payment (චෙක්පත් ගෙවීම)
+                </span>
+                <span className="text-[11px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/60 px-2 py-0.5 rounded-lg">
+                  Amount: {formatCurrency(grandTotal)}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                    Cheque # (අංකය) *
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="e.g. CHQ-88201"
+                    value={chequeNo}
+                    onChange={(e) => setChequeNo(e.target.value)}
+                    className="w-full px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                    Bank Name (බැංකුව)
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="e.g. Commercial / BOC"
+                    value={bankName}
+                    onChange={(e) => setBankName(e.target.value)}
+                    className="w-full px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Customer Credit Info Box */}
+          {paymentMethod === 'Credit' && (
+            <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-rose-900 dark:text-rose-200 flex items-center gap-1.5">
+                  <Users className="w-4 h-4 text-rose-600" />
+                  Customer Credit (ණයට ගැනීම / Khata)
+                </span>
+                <span className="text-[11px] font-black text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-900/60 px-2 py-0.5 rounded-lg">
+                  Credit: {formatCurrency(grandTotal)}
+                </span>
+              </div>
+              <p className="text-[11px] text-rose-700 dark:text-rose-300 font-medium">
+                {selectedCustomerId ? (
+                  <span>
+                    ✓ පාරිභෝගිකයා: <strong className="font-bold underline">{customCustomerName || 'Selected Customer'}</strong> ගේ ගිණුමට {formatCurrency(grandTotal)} ක් හිඟ ණය ලෙස එකතු වේ.
+                  </span>
+                ) : (
+                  <span className="text-rose-600 font-bold">
+                    ⚠️ කරුණාකර ඉහත පාරිභෝගික ලැයිස්තුවෙන් (Customer dropdown) නම තෝරන්න!
+                  </span>
+                )}
               </p>
             </div>
           )}
