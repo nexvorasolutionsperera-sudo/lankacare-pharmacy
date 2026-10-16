@@ -74,58 +74,6 @@ export default function LoginPage({ onLoginSuccess }) {
           </div>
         )}
 
-        {/* Quick Role Selection Tabs */}
-        <div className="mb-4 p-1 bg-slate-100 rounded-2xl flex gap-1">
-          <button
-            type="button"
-            onClick={() => {
-              setUsername('admin');
-              setPassword('admin123');
-              setError('');
-            }}
-            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              username === 'admin'
-                ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
-          >
-            <span>👑 Admin (පරිපාලක)</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              setUsername('cashier');
-              setPassword('cashier123');
-              setError('');
-            }}
-            className={`flex-1 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              username === 'cashier'
-                ? 'bg-amber-600 text-white shadow-sm shadow-amber-600/30'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-            }`}
-          >
-            <span>💳 Cashier (කැෂියර්)</span>
-          </button>
-        </div>
-
-        {/* Role Access Description Box */}
-        <div className="mb-5 px-3.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200/80 text-[11px] text-slate-600">
-          {username === 'cashier' ? (
-            <div className="flex items-start gap-2">
-              <span className="w-2 h-2 rounded-full bg-amber-500 mt-1 shrink-0" />
-              <div>
-                <strong className="text-amber-800">Cashier අතුරුමුහුණත (View):</strong> POS කවුන්ටරය, පාරිභෝගික මිල/තොග බැලීම, රීලෝඩ් & ෆොටෝකොපි. (ලාභ වාර්තා, තොග මිලදී ගත් මිල සහ මකාදැමීම් සැඟව ඇත).
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-start gap-2">
-              <span className="w-2 h-2 rounded-full bg-indigo-500 mt-1 shrink-0" />
-              <div>
-                <strong className="text-indigo-800">Admin අතුරුමුහුණත (View):</strong> ඩෑෂ්බෝඩ්, සම්පූර්ණ ලාභ & ආදායම් වාර්තා, මිලදී ගැනුම් මිල, ඩීලර් ගෙවීම් සහ තොග ඇතුළත් කිරීම් (Full Master Access).
-              </div>
-            </div>
-          )}
-        </div>
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
