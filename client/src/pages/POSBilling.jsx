@@ -8,6 +8,7 @@ import {
   Printer, 
   RotateCcw, 
   User, 
+  Users,
   FileText, 
   CheckCircle, 
   AlertCircle,
@@ -243,12 +244,32 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
     }
   };
 
-  // Keyboard wedge listener for handheld barcode scanner guns
+  // Keyboard wedge listener for handheld barcode scanner guns & POS Quick Shortcuts (F9, F2)
+  const handleCheckoutRef = useRef(null);
+  useEffect(() => {
+    handleCheckoutRef.current = handleCheckout;
+  });
+
   useEffect(() => {
     let buffer = '';
     let lastKeyTime = Date.now();
 
     const handleGlobalKeyDown = (e) => {
+      // Hotkey F9: Complete Sale / Print Bill
+      if (e.key === 'F9') {
+        e.preventDefault();
+        if (handleCheckoutRef.current) handleCheckoutRef.current();
+        return;
+      }
+
+      // Hotkey F2: Jump to Search Bar
+      if (e.key === 'F2') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+        return;
+      }
+
       const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
       const isInput = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
       const isSearchInput = document.activeElement === searchInputRef.current;
@@ -512,16 +533,19 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                     }
                   }
                 }}
-                placeholder="ඖෂධ, Grocery, පොත්පත් හෝ Barcode / QR ස්කෑන් කරන්න (Type or Scan Barcode/QR)..."
-                className="w-full pl-11 pr-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm font-semibold text-slate-800 dark:text-white transition-all placeholder:text-slate-400"
+                placeholder="ඖෂධ, Grocery, පොත්පත් හෝ Barcode / QR ස්කෑන් කරන්න (Press F2 to focus)..."
+                className="w-full pl-11 pr-14 py-3.5 rounded-2xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm sm:text-base font-bold text-slate-800 dark:text-white transition-all placeholder:text-slate-400 shadow-xs"
               />
+              <span className="absolute right-3.5 top-1/2 -translate-y-1/2 hidden sm:inline-block text-[11px] font-black uppercase text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-md">
+                F2
+              </span>
             </div>
 
             {/* Clear Button */}
             {searchTerm && (
               <button
                 onClick={() => setSearchTerm('')}
-                className="px-3 py-3 text-xs font-bold text-slate-500 hover:text-slate-800 bg-slate-100 dark:bg-slate-800 rounded-2xl transition-colors cursor-pointer"
+                className="px-4 py-3.5 text-xs font-black text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 rounded-2xl transition-all cursor-pointer border border-slate-200 dark:border-slate-700"
               >
                 Clear
               </button>
@@ -532,23 +556,24 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
               type="button"
               onClick={() => setIsCameraScannerOpen(true)}
               title="Open Webcam / Camera Scanner for QR & Barcodes"
-              className="flex items-center gap-2 px-3.5 sm:px-4 py-3 rounded-2xl bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700 text-white font-bold text-xs shadow-md shadow-indigo-600/25 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
+              className="flex items-center gap-2 px-4 sm:px-5 py-3.5 rounded-2xl bg-gradient-to-r from-indigo-600 to-sky-600 hover:from-indigo-700 hover:to-sky-700 text-white font-black text-xs sm:text-sm shadow-lg shadow-indigo-600/30 active:scale-95 transition-all cursor-pointer whitespace-nowrap"
             >
-              <Camera className="w-4 h-4" />
-              <QrCode className="w-4 h-4" />
-              <span className="hidden sm:inline">Camera Scan (QR)</span>
+              <Camera className="w-5 h-5 shrink-0" />
+              <QrCode className="w-5 h-5 shrink-0" />
+              <span className="hidden md:inline">Camera Scan (QR)</span>
             </button>
           </div>
 
           {/* Quick Hardware Scanner status pill */}
-          <div className="flex items-center justify-between text-[11px] text-slate-400 px-1">
-            <span className="flex items-center gap-1.5 font-medium text-slate-500 dark:text-slate-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-slate-400 px-1">
+            <span className="flex items-center gap-1.5 font-bold text-slate-600 dark:text-slate-300">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
               <span>Handheld USB / Bluetooth Scanner Gun Ready (කවුන්ටර ස්කෑනරය සක්‍රියයි)</span>
             </span>
-            <span className="hidden md:inline text-[10px] text-slate-400">
-              Press Enter or Scan Gun to instant add
-            </span>
+            <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500">
+              <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">F2: Search</span>
+              <span className="bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md border border-slate-200 dark:border-slate-700">F9: Complete Bill</span>
+            </div>
           </div>
 
           {/* Category Chips Scroll */}
@@ -557,10 +582,10 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                className={`px-4 py-2.5 rounded-2xl text-xs sm:text-sm font-black whitespace-nowrap transition-all cursor-pointer shadow-xs active:scale-95 ${
                   selectedCategory === cat
-                    ? 'bg-indigo-600 text-white shadow-sm shadow-indigo-600/30'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'
+                    ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30 ring-2 ring-indigo-400'
+                    : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200/80 dark:border-slate-700'
                 }`}
               >
                 {cat}
@@ -570,7 +595,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
         </div>
 
         {/* Medicine Product Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[calc(100vh-250px)] overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-h-[calc(100vh-250px)] overflow-y-auto pr-1">
           {filteredMedicines.length === 0 ? (
             <div className="col-span-2 py-16 text-center bg-white/50 dark:bg-slate-900/50 rounded-3xl border border-dashed border-slate-300 dark:border-slate-800">
               <AlertCircle className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
@@ -592,66 +617,90 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                 <div
                   key={med.id || med._id}
                   onClick={() => !isOut && addToCart(med)}
-                  className={`p-4 rounded-3xl border transition-all select-none cursor-pointer group relative overflow-hidden ${
+                  className={`p-4 rounded-3xl border-2 transition-all select-none cursor-pointer group relative overflow-hidden flex flex-col justify-between ${
                     isOut 
                       ? 'bg-slate-100/70 dark:bg-slate-900/40 border-slate-200 dark:border-slate-800 opacity-60 cursor-not-allowed' 
-                      : `bg-white dark:bg-slate-900 border-slate-200/90 dark:border-slate-800 ${
+                      : `bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 ${
                           isB 
-                            ? 'hover:border-sky-500 hover:shadow-lg hover:shadow-sky-500/10' 
+                            ? 'hover:border-sky-500 hover:shadow-xl hover:shadow-sky-500/10' 
                             : isG 
-                              ? 'hover:border-amber-500 hover:shadow-lg hover:shadow-amber-500/10' 
-                              : 'hover:border-indigo-500 hover:shadow-lg hover:shadow-indigo-500/10'
+                              ? 'hover:border-amber-500 hover:shadow-xl hover:shadow-amber-500/10' 
+                              : 'hover:border-indigo-500 hover:shadow-xl hover:shadow-indigo-500/10'
                         } active:scale-[0.98]`
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <h4 className={`font-extrabold text-slate-900 dark:text-white text-sm leading-tight transition-colors truncate ${
-                        isB ? 'group-hover:text-sky-600' : (isG ? 'group-hover:text-amber-600' : 'group-hover:text-indigo-600')
+                  <div>
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <h4 className={`font-black text-slate-900 dark:text-white text-sm sm:text-base leading-tight transition-colors truncate ${
+                          isB ? 'group-hover:text-sky-600' : (isG ? 'group-hover:text-amber-600' : 'group-hover:text-indigo-600')
+                        }`}>
+                          {med.name}
+                        </h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 font-semibold truncate mt-0.5">
+                          {med.generic_name || 'Generic'} • {med.dosage || 'General'}
+                        </p>
+                      </div>
+                      <span className={`text-[10px] font-black px-2.5 py-1 rounded-xl shrink-0 uppercase tracking-wider ${
+                        isB 
+                          ? 'bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 border border-sky-200 dark:border-sky-800' 
+                          : (isG 
+                              ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800' 
+                              : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 border border-indigo-200 dark:border-indigo-800')
                       }`}>
-                        {med.name}
-                      </h4>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 font-medium truncate mt-0.5">
-                        {med.generic_name || 'Generic'} • {med.dosage || 'General'}
-                      </p>
-                    </div>
-                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-lg shrink-0 ${
-                      isB 
-                        ? 'bg-sky-100 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300' 
-                        : (isG 
-                            ? 'bg-amber-100 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300' 
-                            : 'bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300')
-                    }`}>
-                      {med.category || (isB ? 'Bookshop' : (isG ? 'Grocery' : 'Medicine'))}
-                    </span>
-                  </div>
-
-                  <div className="flex items-end justify-between mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
-                    <div>
-                      <span className="text-[10px] text-slate-400 font-semibold block">Price (මිල)</span>
-                      <span className="text-sm font-black text-slate-900 dark:text-white font-mono">
-                        {formatCurrency(price)}
+                        {med.category || (isB ? 'Bookshop' : (isG ? 'Grocery' : 'Medicine'))}
                       </span>
                     </div>
 
-                    <div className="text-right">
-                      {isOut ? (
-                        <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-rose-100 text-rose-700">
-                          Out of Stock
+                    <div className="flex items-end justify-between mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/80">
+                      <div>
+                        <span className="text-[10px] text-slate-400 font-extrabold uppercase tracking-wider block">Price (මිල)</span>
+                        <span className="text-base sm:text-lg font-black text-slate-900 dark:text-white font-mono">
+                          {formatCurrency(price)}
                         </span>
-                      ) : isLow ? (
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800">
-                          Low: {med.stock_quantity} left
-                        </span>
-                      ) : (
-                        <span className="text-[11px] font-bold text-slate-500 dark:text-slate-400">
-                          Stock: <span className={`${
-                            isB ? 'text-sky-600 dark:text-sky-400' : (isG ? 'text-amber-600 dark:text-amber-400' : 'text-indigo-600 dark:text-indigo-400')
-                          } font-extrabold font-mono`}>{med.stock_quantity}</span>
-                        </span>
-                      )}
+                      </div>
+
+                      <div className="text-right">
+                        {isOut ? (
+                          <span className="text-[10px] font-black px-2.5 py-1 rounded-lg bg-rose-100 text-rose-700">
+                            Out of Stock
+                          </span>
+                        ) : isLow ? (
+                          <span className="text-[10px] font-black px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800">
+                            Low: {med.stock_quantity} left
+                          </span>
+                        ) : (
+                          <span className="text-xs font-bold text-slate-500 dark:text-slate-400">
+                            Stock: <span className={`${
+                              isB ? 'text-sky-600 dark:text-sky-400' : (isG ? 'text-amber-600 dark:text-amber-400' : 'text-indigo-600 dark:text-indigo-400')
+                            } font-black font-mono`}>{med.stock_quantity}</span>
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
+
+                  {/* High-visibility Big Add to Bill Button */}
+                  <button
+                    type="button"
+                    disabled={isOut}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isOut) addToCart(med);
+                    }}
+                    className={`w-full mt-3 py-2.5 px-3 rounded-2xl font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-all cursor-pointer ${
+                      isOut
+                        ? 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                        : isB
+                          ? 'bg-sky-600 hover:bg-sky-700 text-white shadow-sky-600/25 ring-2 ring-sky-400/30'
+                          : isG
+                            ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/25 ring-2 ring-amber-400/30'
+                            : 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-600/25 ring-2 ring-indigo-400/30'
+                    }`}
+                  >
+                    <Plus className="w-4 h-4 stroke-[3]" />
+                    {isOut ? 'තොග අවසන් (Out of Stock)' : '+ බිලට එක් කරන්න (Add to Bill)'}
+                  </button>
                 </div>
               );
             })
@@ -671,15 +720,15 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
             </div>
             <div>
               <h3 className="font-black text-slate-900 dark:text-white text-base">කවුන්ටරය (Billing Cart)</h3>
-              <p className="text-xs text-slate-400 font-medium">{cart.length} items in current bill</p>
+              <p className="text-xs text-slate-400 font-bold">{cart.length} items in current bill</p>
             </div>
           </div>
           {cart.length > 0 && (
             <button
               onClick={clearCart}
-              className="flex items-center gap-1 text-xs text-rose-500 hover:text-rose-700 font-bold py-1 px-2.5 rounded-xl hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 text-xs font-black text-rose-600 hover:text-rose-700 py-1.5 px-3 rounded-xl bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 transition-all cursor-pointer shadow-xs active:scale-95"
             >
-              <RotateCcw className="w-3.5 h-3.5" /> Clear All
+              <RotateCcw className="w-3.5 h-3.5" /> හිස් කරන්න (Clear All)
             </button>
           )}
         </div>
@@ -690,8 +739,8 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
           {/* Customer Input & Selector */}
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                <User className="w-3 h-3 text-indigo-500" />
+              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <User className="w-3.5 h-3.5 text-indigo-500" />
                 Customer (පාරිභෝගිකයා)
               </label>
               <button
@@ -700,7 +749,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                   setSelectedCustomerId('');
                   setCustomCustomerName('Walk-in Customer');
                 }}
-                className="text-[10px] font-extrabold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
+                className="text-[10px] font-black text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
               >
                 + Walk-in
               </button>
@@ -715,7 +764,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                   setSelectedCustomerId('');
                 }}
                 placeholder="Walk-in Customer"
-                className="flex-1 text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex-1 text-xs sm:text-sm font-bold px-3 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
               {customers.length > 0 && (
                 <select
@@ -728,7 +777,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                       if (c) setCustomCustomerName(c.name);
                     }
                   }}
-                  className="w-7 px-1 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  className="w-8 sm:w-9 px-1 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-black text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                   title="Select from saved customers"
                 >
                   <option value="">▼</option>
@@ -743,8 +792,8 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
           {/* Doctor Input & Selector */}
           <div className="space-y-1">
             <div className="flex items-center justify-between">
-              <label className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
-                <FileText className="w-3 h-3 text-sky-500" />
+              <label className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                <FileText className="w-3.5 h-3.5 text-sky-500" />
                 Doctor (වෛද්‍යවරයා)
               </label>
               <button
@@ -753,7 +802,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                   setSelectedDoctorId('');
                   setCustomDoctorName('');
                 }}
-                className="text-[10px] font-extrabold text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                className="text-[10px] font-black text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
               >
                 Clear (OTC)
               </button>
@@ -768,7 +817,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                   setSelectedDoctorId('');
                 }}
                 placeholder="Prescribing Dr / OTC"
-                className="flex-1 text-xs font-semibold px-2.5 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="flex-1 text-xs sm:text-sm font-bold px-3 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
               {doctors.length > 0 && (
                 <select
@@ -781,7 +830,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                       if (d) setCustomDoctorName(d.name);
                     }
                   }}
-                  className="w-7 px-1 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-600 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                  className="w-8 sm:w-9 px-1 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-black text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                   title="Select from saved doctors"
                 >
                   <option value="">▼</option>
@@ -804,62 +853,68 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
         )}
 
         {/* Cart Items List */}
-        <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/80 my-2 pr-1 max-h-[220px] min-h-[120px]">
+        <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800/80 my-2 pr-1 max-h-[260px] min-h-[120px]">
           {cart.length === 0 ? (
             <div className="h-full flex flex-col items-center justify-center text-slate-400 py-10">
-              <ShoppingCart className="w-9 h-9 stroke-1 mb-2 text-slate-300 dark:text-slate-700" />
+              <ShoppingCart className="w-10 h-10 stroke-1 mb-2 text-slate-300 dark:text-slate-700" />
               <p className="text-xs font-bold text-slate-500">බිල්පත හිස්ව පවතී (Cart is empty)</p>
               <p className="text-[11px] text-slate-400">වම් පසින් භාණ්ඩ ක්ලික් කර එක් කරන්න</p>
             </div>
           ) : (
             cart.map((item) => (
-              <div key={item.medicine_id} className="py-2.5 space-y-1.5">
+              <div key={item.medicine_id} className="py-3 space-y-1.5">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex-1 min-w-0">
-                    <h5 className="font-extrabold text-xs text-slate-900 dark:text-white truncate">
+                    <h5 className="font-black text-xs sm:text-sm text-slate-900 dark:text-white truncate">
                       {item.medicine_name}
                     </h5>
-                    <p className="text-[10px] text-slate-400">
+                    <p className="text-[11px] font-bold text-slate-400">
                       @{formatCurrency(item.unit_price)} × {item.quantity}
                     </p>
                   </div>
 
-                  {/* Quantity Counter */}
-                  <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-xl p-1">
+                  {/* Quantity Stepper - Large Tactile Buttons */}
+                  <div className="flex items-center gap-1.5 bg-slate-100 dark:bg-slate-800 rounded-2xl p-1 border border-slate-200 dark:border-slate-700">
                     <button
+                      type="button"
                       onClick={() => updateQuantity(item.medicine_id, item.quantity - 1)}
-                      className="p-1 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-white hover:bg-slate-200 shadow-xs cursor-pointer"
+                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white dark:bg-slate-700 text-slate-800 dark:text-white hover:bg-rose-500 hover:text-white shadow-xs font-black text-base flex items-center justify-center cursor-pointer transition-colors active:scale-90"
+                      title="Decrease"
                     >
-                      <Minus className="w-3 h-3" />
+                      <Minus className="w-4 h-4 stroke-[3]" />
                     </button>
-                    <span className="w-6 text-center font-black text-xs text-slate-900 dark:text-white">
+                    <span className="w-7 sm:w-8 text-center font-black text-xs sm:text-sm text-slate-900 dark:text-white font-mono">
                       {item.quantity}
                     </span>
                     <button
+                      type="button"
                       onClick={() => updateQuantity(item.medicine_id, item.quantity + 1)}
-                      className="p-1 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-white hover:bg-slate-200 shadow-xs cursor-pointer"
+                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white dark:bg-slate-700 text-slate-800 dark:text-white hover:bg-emerald-600 hover:text-white shadow-xs font-black text-base flex items-center justify-center cursor-pointer transition-colors active:scale-90"
+                      title="Increase"
                     >
-                      <Plus className="w-3 h-3" />
+                      <Plus className="w-4 h-4 stroke-[3]" />
                     </button>
                   </div>
 
                   {/* Item Subtotal & Delete */}
-                  <div className="text-right w-20">
-                    <p className="font-black text-xs text-slate-900 dark:text-white">
+                  <div className="text-right w-24 shrink-0">
+                    <p className="font-black text-xs sm:text-sm text-slate-900 dark:text-white font-mono">
                       {formatCurrency(item.subtotal)}
                     </p>
                     <button
+                      type="button"
                       onClick={() => removeFromCart(item.medicine_id)}
-                      className="text-[10px] text-rose-500 hover:text-rose-700 font-bold cursor-pointer"
+                      className="mt-0.5 px-2 py-0.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 text-[11px] font-black inline-flex items-center gap-1 cursor-pointer transition-colors"
                     >
+                      <Trash2 className="w-3 h-3" />
                       Remove
                     </button>
                   </div>
                 </div>
 
                 {/* Individual Item Discount Controls */}
-                <div className="flex items-center gap-2 bg-indigo-50/50 dark:bg-indigo-950/20 px-2 py-1 rounded-xl text-[10px]">
-                  <Tag className="w-3 h-3 text-indigo-600" />
+                <div className="flex items-center gap-2 bg-indigo-50/50 dark:bg-indigo-950/20 px-2.5 py-1 rounded-xl text-[10px]">
+                  <Tag className="w-3.5 h-3.5 text-indigo-600" />
                   <span className="font-bold text-slate-600 dark:text-slate-300">Item Disc:</span>
                   <input
                     type="number"
@@ -871,13 +926,14 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                     className="w-12 px-1.5 py-0.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-center font-bold text-slate-800 dark:text-white"
                   />
                   <button
+                    type="button"
                     onClick={() => updateItemDiscount(item.medicine_id, item.discount_val, item.discount_type === 'percent' ? 'amount' : 'percent')}
-                    className="px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 font-bold cursor-pointer"
+                    className="px-2 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 font-bold cursor-pointer"
                   >
                     {item.discount_type === 'percent' ? '%' : 'Rs.'}
                   </button>
                   {item.discount_amount > 0 && (
-                    <span className="ml-auto font-bold text-rose-600">
+                    <span className="ml-auto font-black text-rose-600">
                       -Rs.{item.discount_amount.toFixed(2)}
                     </span>
                   )}
@@ -929,53 +985,70 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
             </div>
           )}
 
-          {/* NET GRAND TOTAL */}
-          <div className="flex justify-between items-center py-2.5 px-3.5 rounded-2xl bg-slate-900 text-white shadow-md border border-slate-800">
+          {/* NET GRAND TOTAL - High-Contrast Large POS Display */}
+          <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-r from-slate-950 via-slate-900 to-indigo-950 text-white shadow-xl border-2 border-indigo-500/50 flex items-center justify-between">
             <div>
-              <span className="text-[10px] text-sky-400 font-extrabold uppercase tracking-wider block">Net Payable</span>
-              <span className="text-base font-extrabold">ශුද්ධ මුදල</span>
+              <span className="text-xs text-sky-400 font-black uppercase tracking-wider block flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-sky-400" />
+                ශුද්ධ මුදල (NET PAYABLE)
+              </span>
+              <span className="text-sm font-bold text-slate-300">
+                Total Amount Due
+              </span>
             </div>
-            <span className="text-2xl font-black text-sky-400 font-mono">
-              {formatCurrency(grandTotal)}
-            </span>
+            <div className="text-right">
+              <span className="text-3xl sm:text-4xl font-black text-emerald-400 font-mono tracking-tight block">
+                {formatCurrency(grandTotal)}
+              </span>
+              <span className="text-[11px] text-slate-400 font-bold">
+                {cart.reduce((sum, item) => sum + (Number(item.quantity) || 1), 0)} items in bill
+              </span>
+            </div>
           </div>
 
-          {/* Payment Method Selector */}
-          <div className="grid grid-cols-4 gap-1.5 pt-1">
-            {['Cash', 'Card', 'Cheque', 'Credit'].map((pm) => (
-              <button
-                key={pm}
-                type="button"
-                onClick={() => setPaymentMethod(pm)}
-                className={`py-1.5 px-2 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                  paymentMethod === pm
-                    ? 'bg-indigo-600 text-white shadow-sm'
-                    : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'
-                }`}
-              >
-                {pm === 'Cash' && <Banknote className="w-3.5 h-3.5" />}
-                {pm === 'Card' && <CreditCard className="w-3.5 h-3.5" />}
-                {pm === 'Cheque' && <FileText className="w-3.5 h-3.5" />}
-                {pm === 'Credit' && <Users className="w-3.5 h-3.5" />}
-                <span>{pm}</span>
-              </button>
-            ))}
+          {/* Payment Method Selector - Large Touch-Friendly Buttons */}
+          <div className="space-y-1.5 pt-1">
+            <span className="text-xs font-black text-slate-700 dark:text-slate-300 block">
+              ගෙවීම් ක්‍රමය තෝරන්න (Select Payment Method):
+            </span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {[
+                { id: 'Cash', label: 'Cash (මුදල්)', icon: Banknote, activeStyle: 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/30 ring-4 ring-emerald-400/40' },
+                { id: 'Card', label: 'Card (කාඩ්)', icon: CreditCard, activeStyle: 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 ring-4 ring-blue-400/40' },
+                { id: 'Cheque', label: 'Cheque (චෙක්)', icon: FileText, activeStyle: 'bg-amber-600 text-white shadow-lg shadow-amber-600/30 ring-4 ring-amber-400/40' },
+                { id: 'Credit', label: 'Credit (ණය)', icon: Users, activeStyle: 'bg-rose-600 text-white shadow-lg shadow-rose-600/30 ring-4 ring-rose-400/40' },
+              ].map(({ id, label, icon: Icon, activeStyle }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setPaymentMethod(id)}
+                  className={`py-3.5 px-2.5 rounded-2xl font-black flex flex-col items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 ${
+                    paymentMethod === id
+                      ? `${activeStyle} scale-[1.02]`
+                      : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border-2 border-slate-200 dark:border-slate-700'
+                  }`}
+                >
+                  <Icon className="w-5 h-5 sm:w-6 sm:h-6 shrink-0" />
+                  <span className="text-xs sm:text-sm truncate">{label}</span>
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Card Payment Info Box */}
           {paymentMethod === 'Card' && (
-            <div className="p-3 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 border border-blue-200 dark:border-blue-800 space-y-2">
+            <div className="p-3.5 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/40 dark:to-indigo-950/40 border-2 border-blue-200 dark:border-blue-800 space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
+                <span className="text-xs sm:text-sm font-black text-indigo-900 dark:text-indigo-200 flex items-center gap-1.5">
                   <CreditCard className="w-4 h-4 text-indigo-600" />
                   Card Payment (කාඩ්පත් ගෙවීම)
                 </span>
-                <span className="text-[11px] font-extrabold text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/60 px-2 py-0.5 rounded-lg">
+                <span className="text-xs font-black text-indigo-700 dark:text-indigo-300 bg-indigo-100 dark:bg-indigo-900/60 px-2.5 py-1 rounded-xl">
                   Exact: {formatCurrency(grandTotal)}
                 </span>
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                <span className="text-xs font-bold text-slate-600 dark:text-slate-400 whitespace-nowrap">
                   Card Last 4 Digits:
                 </span>
                 <input
@@ -984,7 +1057,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                   placeholder="e.g. 4242 (Optional)"
                   value={cardLast4}
                   onChange={(e) => setCardLast4(e.target.value.replace(/\D/g, ''))}
-                  className="w-32 px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-mono font-bold text-center text-slate-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                  className="w-36 px-3 py-1.5 rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm font-mono font-black text-center text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 />
               </div>
             </div>
@@ -992,19 +1065,19 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
 
           {/* Cheque Payment Info Box */}
           {paymentMethod === 'Cheque' && (
-            <div className="p-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 space-y-2">
+            <div className="p-3.5 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-200 dark:border-amber-800 space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
+                <span className="text-xs sm:text-sm font-black text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
                   <FileText className="w-4 h-4 text-amber-600" />
                   Cheque Payment (චෙක්පත් ගෙවීම)
                 </span>
-                <span className="text-[11px] font-extrabold text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/60 px-2 py-0.5 rounded-lg">
+                <span className="text-xs font-black text-amber-700 dark:text-amber-300 bg-amber-100 dark:bg-amber-900/60 px-2.5 py-1 rounded-xl">
                   Amount: {formatCurrency(grandTotal)}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">
                     Cheque # (අංකය) *
                   </span>
                   <input
@@ -1012,11 +1085,11 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                     placeholder="e.g. CHQ-88201"
                     value={chequeNo}
                     onChange={(e) => setChequeNo(e.target.value)}
-                    className="w-full px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs sm:text-sm font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold text-slate-600 dark:text-slate-400 block mb-1">
+                  <span className="text-xs font-bold text-slate-600 dark:text-slate-400 block mb-1">
                     Bank Name (බැංකුව)
                   </span>
                   <input
@@ -1024,7 +1097,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                     placeholder="e.g. Commercial / BOC"
                     value={bankName}
                     onChange={(e) => setBankName(e.target.value)}
-                    className="w-full px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full px-3 py-2 rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs sm:text-sm font-bold text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                   />
                 </div>
               </div>
@@ -1033,17 +1106,17 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
 
           {/* Customer Credit Info Box */}
           {paymentMethod === 'Credit' && (
-            <div className="p-3 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 space-y-2">
+            <div className="p-3.5 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border-2 border-rose-200 dark:border-rose-800 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-rose-900 dark:text-rose-200 flex items-center gap-1.5">
+                <span className="text-xs sm:text-sm font-black text-rose-900 dark:text-rose-200 flex items-center gap-1.5">
                   <Users className="w-4 h-4 text-rose-600" />
                   Customer Credit (ණයට ගැනීම / Khata)
                 </span>
-                <span className="text-[11px] font-black text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-900/60 px-2 py-0.5 rounded-lg">
+                <span className="text-xs font-black text-rose-700 dark:text-rose-300 bg-rose-100 dark:bg-rose-900/60 px-2.5 py-1 rounded-xl">
                   Credit: {formatCurrency(grandTotal)}
                 </span>
               </div>
-              <p className="text-[11px] text-rose-700 dark:text-rose-300 font-medium">
+              <p className="text-xs text-rose-700 dark:text-rose-300 font-medium">
                 {selectedCustomerId ? (
                   <span>
                     ✓ පාරිභෝගිකයා: <strong className="font-bold underline">{customCustomerName || 'Selected Customer'}</strong> ගේ ගිණුමට {formatCurrency(grandTotal)} ක් හිඟ ණය ලෙස එකතු වේ.
@@ -1059,20 +1132,20 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
 
           {/* ==================== CASH TENDER & INTERACTIVE CALCULATOR ==================== */}
           {paymentMethod === 'Cash' && (
-            <div className="space-y-2 pt-1 border-t border-slate-100 dark:border-slate-800">
+            <div className="space-y-2.5 pt-2 border-t border-slate-100 dark:border-slate-800">
               
               {/* Tender Header & Calculator Toggle */}
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
-                  <Banknote className="w-3.5 h-3.5 text-indigo-500" />
+                <span className="text-xs sm:text-sm font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                  <Banknote className="w-4 h-4 text-emerald-600" />
                   Tendered (දුන් මුදල):
                 </span>
                 <button
                   type="button"
                   onClick={() => setShowCalculator(!showCalculator)}
-                  className={`flex items-center gap-1 text-[11px] font-bold px-2.5 py-1 rounded-xl border transition-all cursor-pointer ${
+                  className={`flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl border-2 transition-all cursor-pointer active:scale-95 ${
                     showCalculator 
-                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm' 
+                      ? 'bg-indigo-600 text-white border-indigo-600 shadow-md' 
                       : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border-slate-300 dark:border-slate-700 hover:bg-slate-200'
                   }`}
                 >
@@ -1081,7 +1154,7 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                 </button>
               </div>
 
-              {/* Tender Input Box */}
+              {/* Large Tender Input Box */}
               <div className="relative">
                 <input
                   type="number"
@@ -1089,38 +1162,38 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                   value={cashTendered}
                   onChange={(e) => setCashTendered(e.target.value)}
                   placeholder={grandTotal > 0 ? grandTotal.toFixed(2) : "0.00"}
-                  className="w-full pl-8 pr-16 py-2 rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-base font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono"
+                  className="w-full pl-10 pr-20 py-3 sm:py-3.5 rounded-2xl border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-xl sm:text-2xl font-black text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono shadow-inner"
                 />
-                <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm font-black text-slate-400">
                   Rs.
                 </span>
                 {cashTendered && (
                   <button
                     type="button"
                     onClick={() => setCashTendered('')}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-0.5 rounded-md bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 text-[10px] font-bold hover:bg-rose-100 hover:text-rose-600 cursor-pointer"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1 rounded-xl bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-black hover:bg-rose-100 hover:text-rose-600 cursor-pointer transition-colors"
                   >
                     Clear
                   </button>
                 )}
               </div>
 
-              {/* Quick Cash Note Denomination Buttons */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+              {/* Large Quick Cash Note Denomination Buttons */}
+              <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
                 <button
                   type="button"
                   onClick={() => setCashTendered(grandTotal.toFixed(2))}
-                  className="px-2.5 py-1.5 bg-indigo-100 dark:bg-indigo-950/70 hover:bg-indigo-200 text-indigo-900 dark:text-indigo-200 text-[11px] font-black rounded-xl cursor-pointer whitespace-nowrap shadow-xs active:scale-95"
+                  className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-black rounded-2xl cursor-pointer whitespace-nowrap shadow-md shadow-emerald-600/20 active:scale-95"
                   title="Exact Cash Amount"
                 >
-                  Exact (නියම)
+                  Exact (නියම මුදල)
                 </button>
                 {[500, 1000, 2000, 5000].map((amt) => (
                   <button
                     key={amt}
                     type="button"
                     onClick={() => setCashTendered(amt.toString())}
-                    className="px-2.5 py-1.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 text-[11px] font-bold rounded-xl cursor-pointer whitespace-nowrap border border-slate-200 dark:border-slate-700 active:scale-95"
+                    className="px-4 py-2.5 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-100 text-xs sm:text-sm font-black rounded-2xl cursor-pointer whitespace-nowrap border-2 border-slate-200 dark:border-slate-700 active:scale-95 shadow-xs"
                   >
                     Rs.{amt.toLocaleString()}
                   </button>
@@ -1129,33 +1202,33 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
 
               {/* Interactive POS Numpad Calculator (Collapsible / Toggleable) */}
               {showCalculator && (
-                <div className="p-2.5 bg-slate-100 dark:bg-slate-800/90 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-inner animate-in fade-in zoom-in-95 duration-100 space-y-1.5">
-                  <div className="grid grid-cols-4 gap-1.5 text-xs font-bold">
+                <div className="p-3 bg-slate-100 dark:bg-slate-800/90 rounded-3xl border-2 border-slate-200 dark:border-slate-700 shadow-inner animate-in fade-in zoom-in-95 duration-100 space-y-2">
+                  <div className="grid grid-cols-4 gap-2 text-sm sm:text-base font-black">
                     <button
                       type="button"
                       onClick={() => handleCalcDigit('7')}
-                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                      className="py-3.5 bg-white dark:bg-slate-700 rounded-2xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95 cursor-pointer"
                     >
                       7
                     </button>
                     <button
                       type="button"
                       onClick={() => handleCalcDigit('8')}
-                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                      className="py-3.5 bg-white dark:bg-slate-700 rounded-2xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95 cursor-pointer"
                     >
                       8
                     </button>
                     <button
                       type="button"
                       onClick={() => handleCalcDigit('9')}
-                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                      className="py-3.5 bg-white dark:bg-slate-700 rounded-2xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95 cursor-pointer"
                     >
                       9
                     </button>
                     <button
                       type="button"
                       onClick={() => handleCalcAddAmount(100)}
-                      className="p-2.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded-xl font-bold shadow-xs hover:bg-indigo-100 active:scale-95"
+                      className="py-3.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded-2xl font-black shadow-xs hover:bg-indigo-100 active:scale-95 cursor-pointer text-xs sm:text-sm"
                     >
                       +100
                     </button>
@@ -1163,28 +1236,28 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                     <button
                       type="button"
                       onClick={() => handleCalcDigit('4')}
-                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                      className="py-3.5 bg-white dark:bg-slate-700 rounded-2xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95 cursor-pointer"
                     >
                       4
                     </button>
                     <button
                       type="button"
                       onClick={() => handleCalcDigit('5')}
-                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                      className="py-3.5 bg-white dark:bg-slate-700 rounded-2xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95 cursor-pointer"
                     >
                       5
                     </button>
                     <button
                       type="button"
                       onClick={() => handleCalcDigit('6')}
-                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                      className="py-3.5 bg-white dark:bg-slate-700 rounded-2xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95 cursor-pointer"
                     >
                       6
                     </button>
                     <button
                       type="button"
                       onClick={() => handleCalcAddAmount(500)}
-                      className="p-2.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded-xl font-bold shadow-xs hover:bg-indigo-100 active:scale-95"
+                      className="py-3.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded-2xl font-black shadow-xs hover:bg-indigo-100 active:scale-95 cursor-pointer text-xs sm:text-sm"
                     >
                       +500
                     </button>
@@ -1192,28 +1265,28 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                     <button
                       type="button"
                       onClick={() => handleCalcDigit('1')}
-                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                      className="py-3.5 bg-white dark:bg-slate-700 rounded-2xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95 cursor-pointer"
                     >
                       1
                     </button>
                     <button
                       type="button"
                       onClick={() => handleCalcDigit('2')}
-                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                      className="py-3.5 bg-white dark:bg-slate-700 rounded-2xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95 cursor-pointer"
                     >
                       2
                     </button>
                     <button
                       type="button"
                       onClick={() => handleCalcDigit('3')}
-                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                      className="py-3.5 bg-white dark:bg-slate-700 rounded-2xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95 cursor-pointer"
                     >
                       3
                     </button>
                     <button
                       type="button"
                       onClick={() => handleCalcAddAmount(1000)}
-                      className="p-2.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded-xl font-bold shadow-xs hover:bg-indigo-100 active:scale-95"
+                      className="py-3.5 bg-indigo-50 dark:bg-indigo-950/60 text-indigo-700 dark:text-indigo-300 rounded-2xl font-black shadow-xs hover:bg-indigo-100 active:scale-95 cursor-pointer text-xs sm:text-sm"
                     >
                       +1000
                     </button>
@@ -1221,28 +1294,28 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                     <button
                       type="button"
                       onClick={handleCalcClear}
-                      className="p-2.5 bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 rounded-xl font-bold shadow-xs hover:bg-rose-200 active:scale-95"
+                      className="py-3.5 bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 rounded-2xl font-black shadow-xs hover:bg-rose-200 active:scale-95 cursor-pointer"
                     >
                       C
                     </button>
                     <button
                       type="button"
                       onClick={() => handleCalcDigit('0')}
-                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                      className="py-3.5 bg-white dark:bg-slate-700 rounded-2xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95 cursor-pointer"
                     >
                       0
                     </button>
                     <button
                       type="button"
                       onClick={() => handleCalcDigit('.')}
-                      className="p-2.5 bg-white dark:bg-slate-700 rounded-xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95"
+                      className="py-3.5 bg-white dark:bg-slate-700 rounded-2xl text-slate-800 dark:text-white shadow-xs hover:bg-indigo-50 active:scale-95 cursor-pointer"
                     >
                       .
                     </button>
                     <button
                       type="button"
                       onClick={handleCalcBackspace}
-                      className="p-2.5 bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-bold shadow-xs hover:bg-slate-300 active:scale-95"
+                      className="py-3.5 bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-2xl font-black shadow-xs hover:bg-slate-300 active:scale-95 cursor-pointer"
                       title="Backspace"
                     >
                       ⌫
@@ -1251,28 +1324,38 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
                 </div>
               )}
 
-              {/* Real-time Change Due OR Short Amount Display */}
+              {/* Real-time Change Due OR Short Amount Display - Large High-Visibility Banner */}
               {cashTendered !== '' && (
                 <>
                   {tendered >= grandTotal && grandTotal > 0 && (
-                    <div className="flex justify-between items-center px-3.5 py-2 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-300 dark:border-emerald-800 text-xs font-black shadow-xs animate-in fade-in">
-                      <span className="text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
-                        <Check className="w-4 h-4 text-emerald-600" />
-                        Change Due (ඉතිරි මුදල):
-                      </span>
-                      <span className="text-emerald-700 dark:text-emerald-300 text-base font-black font-mono">
+                    <div className="flex justify-between items-center px-4 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/30 animate-in zoom-in-95">
+                      <div>
+                        <span className="text-[10px] font-black uppercase text-emerald-100 tracking-wider block">
+                          CHANGE TO RETURN
+                        </span>
+                        <span className="text-sm sm:text-base font-black flex items-center gap-1.5">
+                          <Check className="w-5 h-5 stroke-[3]" />
+                          ඉතිරි මුදල:
+                        </span>
+                      </div>
+                      <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight">
                         {formatCurrency(changeDue)}
                       </span>
                     </div>
                   )}
 
                   {tendered < grandTotal && (
-                    <div className="flex justify-between items-center px-3.5 py-2 rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-300 dark:border-amber-800 text-xs font-black shadow-xs animate-in fade-in">
-                      <span className="text-amber-900 dark:text-amber-200 flex items-center gap-1.5">
-                        <AlertCircle className="w-4 h-4 text-amber-600" />
-                        Short / Due (තවත් අවශ්‍යයි):
-                      </span>
-                      <span className="text-rose-600 dark:text-rose-400 text-base font-black font-mono">
+                    <div className="flex justify-between items-center px-4 py-3.5 rounded-2xl bg-gradient-to-r from-rose-600 to-amber-600 text-white shadow-lg shadow-rose-600/30 animate-in zoom-in-95">
+                      <div>
+                        <span className="text-[10px] font-black uppercase text-rose-100 tracking-wider block">
+                          SHORT / BALANCE REQUIRED
+                        </span>
+                        <span className="text-sm sm:text-base font-black flex items-center gap-1.5">
+                          <AlertCircle className="w-5 h-5 stroke-[3]" />
+                          තවත් අවශ්‍යයි:
+                        </span>
+                      </div>
+                      <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight">
                         {formatCurrency(shortAmount)}
                       </span>
                     </div>
@@ -1283,14 +1366,33 @@ export default function POSBilling({ medicines = [], customers = [], doctors = [
             </div>
           )}
 
-          {/* Checkout Submit Button */}
+          {/* Checkout Submit Button - Jumbo High-Visibility POS Action Button */}
           <button
             onClick={handleCheckout}
             disabled={loading || cart.length === 0}
-            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-indigo-700 hover:from-blue-500 hover:to-indigo-600 text-white font-black text-sm shadow-xl shadow-indigo-600/30 active:scale-[0.98] transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-2"
+            className="w-full py-4.5 sm:py-5 px-5 sm:px-6 rounded-2xl sm:rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-700 hover:from-emerald-500 hover:to-indigo-600 text-white font-black text-base sm:text-lg shadow-2xl shadow-emerald-600/30 ring-4 ring-emerald-400/30 active:scale-[0.98] transition-all flex items-center justify-between cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed mt-2 group border-2 border-emerald-400/40"
           >
-            <Printer className="w-4 h-4" />
-            {loading ? 'බිල්පත නිකුත් වෙමින් පවතී...' : `බිල්පත මුද්‍රණය කරන්න (Print Bill) • ${formatCurrency(grandTotal)}`}
+            <div className="flex items-center gap-3">
+              <div className="p-2 sm:p-2.5 rounded-2xl bg-white/20 text-white group-hover:scale-110 transition-transform">
+                <Printer className="w-6 h-6 sm:w-7 sm:h-7 stroke-[2.5]" />
+              </div>
+              <div className="text-left">
+                <span className="block text-base sm:text-lg font-black leading-tight">
+                  {loading ? 'බිල්පත නිකුත් වෙමින් පවතී...' : 'බිල අවසන් කරන්න (COMPLETE SALE)'}
+                </span>
+                <span className="block text-xs text-emerald-100 font-bold opacity-90">
+                  මුද්‍රණය කර නිකුත් කරන්න • [F9]
+                </span>
+              </div>
+            </div>
+            <div className="text-right pl-2 shrink-0">
+              <span className="text-xl sm:text-2xl font-black font-mono block">
+                {formatCurrency(grandTotal)}
+              </span>
+              <span className="text-[10px] font-black uppercase bg-white/20 px-2 py-0.5 rounded-lg inline-block">
+                {paymentMethod}
+              </span>
+            </div>
           </button>
         </div>
 
