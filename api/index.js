@@ -86,8 +86,13 @@ const MedicineSchema = new mongoose.Schema({
 const CustomerSchema = new mongoose.Schema({
   name: { type: String, required: true },
   phone: { type: String, default: '' },
+  email: { type: String, default: '' },
   address: { type: String, default: '' },
-  total_spent: { type: Number, default: 0 }
+  allergies: { type: String, default: '' },
+  notes: { type: String, default: '' },
+  total_spent: { type: Number, default: 0 },
+  credit_balance: { type: Number, default: 0 },
+  credit_limit: { type: Number, default: 0 }
 }, { timestamps: true });
 
 const DoctorSchema = new mongoose.Schema({
@@ -99,18 +104,24 @@ const DoctorSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const SaleItemSchema = new mongoose.Schema({
-  medicine_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Medicine' },
+  medicine_id: { type: mongoose.Schema.Types.Mixed },
   medicine_name: { type: String, required: true },
   batch_number: { type: String, default: '' },
+  dosage: { type: String, default: '' },
   unit_price: { type: Number, required: true },
+  cost_price: { type: Number, default: 0 },
   quantity: { type: Number, required: true },
+  discount_amount: { type: Number, default: 0 },
   total_price: { type: Number, required: true }
 });
 
 const SaleSchema = new mongoose.Schema({
   bill_number: { type: String, required: true, unique: true },
-  customer_name: { type: String, default: 'Walk-in Customer' },
+  customer_id: { type: mongoose.Schema.Types.Mixed, default: null },
+  customer_name: { type: String, default: 'Walking Customer' },
+  doctor_id: { type: mongoose.Schema.Types.Mixed, default: null },
   doctor_name: { type: String, default: '' },
+  user_id: { type: mongoose.Schema.Types.Mixed, default: null },
   cashier_name: { type: String, default: 'Admin' },
   subtotal: { type: Number, required: true },
   discount: { type: Number, default: 0 },
@@ -118,6 +129,11 @@ const SaleSchema = new mongoose.Schema({
   paid_amount: { type: Number, default: 0 },
   change_amount: { type: Number, default: 0 },
   payment_method: { type: String, default: 'Cash' },
+  card_last4: { type: String, default: '' },
+  cheque_no: { type: String, default: '' },
+  bank_name: { type: String, default: '' },
+  cheque_date: { type: String, default: '' },
+  notes: { type: String, default: '' },
   items: [SaleItemSchema]
 }, { timestamps: true });
 
@@ -169,6 +185,65 @@ const MedicareOrderSchema = new mongoose.Schema({
   remarks: { type: String, default: '' }
 }, { timestamps: true });
 
+// Customer Credit Payments
+const CustomerCreditPaymentSchema = new mongoose.Schema({
+  payment_number: { type: String, required: true, unique: true },
+  customer_id: { type: mongoose.Schema.Types.Mixed, required: true },
+  customer_name: { type: String, required: true },
+  amount: { type: Number, required: true },
+  payment_method: { type: String, default: 'Cash' },
+  cheque_no: { type: String, default: '' },
+  bank_name: { type: String, default: '' },
+  notes: { type: String, default: '' },
+  received_by: { type: String, default: 'Admin' }
+}, { timestamps: true });
+
+// Item Returns
+const SaleReturnSchema = new mongoose.Schema({
+  return_number: { type: String, required: true, unique: true },
+  invoice_no: { type: String, default: '' },
+  customer_name: { type: String, default: 'Walking Customer' },
+  medicine_id: { type: mongoose.Schema.Types.Mixed },
+  medicine_name: { type: String, required: true },
+  batch_no: { type: String, default: '' },
+  quantity: { type: Number, required: true },
+  unit_price: { type: Number, required: true },
+  refund_amount: { type: Number, required: true },
+  reason: { type: String, default: 'Customer Request' },
+  condition: { type: String, enum: ['Restock to Inventory', 'Damaged / Discard'], default: 'Restock to Inventory' },
+  refund_method: { type: String, default: 'Cash' },
+  processed_by: { type: String, default: 'Admin' },
+  notes: { type: String, default: '' }
+}, { timestamps: true });
+
+// Expenses
+const ExpenseSchema = new mongoose.Schema({
+  expense_number: { type: String, required: true, unique: true },
+  title: { type: String, required: true },
+  category: { type: String, required: true, default: 'General' },
+  amount: { type: Number, required: true },
+  expense_date: { type: String, default: () => new Date().toISOString().split('T')[0] },
+  payment_method: { type: String, default: 'Cash' },
+  cheque_no: { type: String, default: '' },
+  paid_to: { type: String, default: '' },
+  notes: { type: String, default: '' },
+  recorded_by: { type: String, default: 'Admin' }
+}, { timestamps: true });
+
+// Stock Adjustments
+const StockAdjustmentSchema = new mongoose.Schema({
+  adjustment_number: { type: String, required: true, unique: true },
+  medicine_id: { type: mongoose.Schema.Types.Mixed, required: true },
+  medicine_name: { type: String, required: true },
+  batch_no: { type: String, default: '' },
+  previous_qty: { type: Number, required: true },
+  adjusted_qty: { type: Number, required: true },
+  difference: { type: Number, required: true },
+  reason: { type: String, required: true },
+  adjusted_by: { type: String, default: 'Admin' },
+  notes: { type: String, default: '' }
+}, { timestamps: true });
+
 const User = mongoose.models.User || mongoose.model('User', UserSchema);
 const Category = mongoose.models.Category || mongoose.model('Category', CategorySchema);
 const Supplier = mongoose.models.Supplier || mongoose.model('Supplier', SupplierSchema);
@@ -178,6 +253,10 @@ const Doctor = mongoose.models.Doctor || mongoose.model('Doctor', DoctorSchema);
 const Sale = mongoose.models.Sale || mongoose.model('Sale', SaleSchema);
 const DealerPurchase = mongoose.models.DealerPurchase || mongoose.model('DealerPurchase', DealerPurchaseSchema);
 const MedicareOrder = mongoose.models.MedicareOrder || mongoose.model('MedicareOrder', MedicareOrderSchema);
+const CustomerCreditPayment = mongoose.models.CustomerCreditPayment || mongoose.model('CustomerCreditPayment', CustomerCreditPaymentSchema);
+const SaleReturn = mongoose.models.SaleReturn || mongoose.model('SaleReturn', SaleReturnSchema);
+const Expense = mongoose.models.Expense || mongoose.model('Expense', ExpenseSchema);
+const StockAdjustment = mongoose.models.StockAdjustment || mongoose.model('StockAdjustment', StockAdjustmentSchema);
 
 const MedicareCatalogSchema = new mongoose.Schema({
   name: { type: String, required: true },
@@ -272,6 +351,56 @@ app.get('/api/auth/users', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+app.post('/api/auth/users', async (req, res) => {
+  try {
+    const { username, password, name, role } = req.body;
+    if (!username || !password || !name) {
+      return res.status(400).json({ error: 'Username, password, and name are required' });
+    }
+    const exists = await User.findOne({ username: username.trim() });
+    if (exists) return res.status(400).json({ error: 'Username already taken' });
+    const user = await User.create({ username: username.trim(), password, name, role: role || 'cashier' });
+    res.status(201).json({ id: user._id, username: user.username, name: user.name, role: user.role });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/auth/users/:id', async (req, res) => {
+  try {
+    await User.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// System Status & Mode (For Vercel Cloud Serverless)
+app.get('/api/system/status', (req, res) => {
+  res.json({
+    success: true,
+    mode: 'online',
+    isOnline: true,
+    configuredMode: 'online',
+    currentMode: 'online',
+    database: 'MongoDB Atlas (Cloud Vercel)',
+    cloudConnected: true,
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.post('/api/system/mode', (req, res) => {
+  res.json({ success: true, mode: req.body.mode || 'online' });
+});
+
+app.post('/api/system/sync', (req, res) => {
+  res.json({
+    success: true,
+    mode: 'online',
+    message: '☁️ Cloud database is synchronized with MongoDB Atlas!'
+  });
 });
 
 app.get('/api/dashboard/stats', async (req, res) => {
@@ -554,21 +683,42 @@ app.get('/api/sales', async (req, res) => {
 
 app.post('/api/sales', async (req, res) => {
   try {
-    const { customer_name, doctor_name, cashier_name, subtotal, discount, total_amount, paid_amount, change_amount, payment_method, items } = req.body;
+    const { 
+      customer_id,
+      customer_name, 
+      doctor_id,
+      doctor_name, 
+      cashier_name, 
+      subtotal, 
+      discount, 
+      total_amount, 
+      paid_amount, 
+      change_amount, 
+      payment_method, 
+      card_last4,
+      cheque_no,
+      bank_name,
+      cheque_date,
+      items 
+    } = req.body;
 
     const safeItems = Array.isArray(items) ? items : [];
     let calculatedSubtotal = 0;
     const formattedItems = safeItems.map(i => {
       const qty = Number(i.quantity) || 1;
       const price = Number(i.unit_price) || 0;
+      const cost = Number(i.cost_price) || 0;
       const total = Number(i.total_price) || (price * qty);
       calculatedSubtotal += total;
       return {
         medicine_id: i.medicine_id,
         medicine_name: i.medicine_name,
         batch_number: i.batch_number || '',
+        dosage: i.dosage || '',
         unit_price: price,
+        cost_price: cost,
         quantity: qty,
+        discount_amount: Number(i.discount_amount) || 0,
         total_price: total
       };
     });
@@ -576,22 +726,32 @@ app.post('/api/sales', async (req, res) => {
     const finalSubtotal = (!isNaN(Number(subtotal)) && Number(subtotal) > 0) ? Number(subtotal) : calculatedSubtotal;
     const finalDiscount = Number(discount) || 0;
     const finalTotal = (!isNaN(Number(total_amount)) && Number(total_amount) > 0) ? Number(total_amount) : Math.max(0, finalSubtotal - finalDiscount);
-    const finalPaid = (!isNaN(Number(paid_amount)) && Number(paid_amount) > 0) ? Number(paid_amount) : finalTotal;
+    const finalPaid = (!isNaN(Number(paid_amount)) && Number(paid_amount) > 0) ? Number(paid_amount) : (payment_method === 'Credit' ? 0 : finalTotal);
     const finalChange = (!isNaN(Number(change_amount))) ? Number(change_amount) : (finalPaid > finalTotal ? Math.max(0, finalPaid - finalTotal) : 0);
 
     for (const item of formattedItems) {
       if (item.medicine_id) {
-        const med = await Medicine.findById(item.medicine_id);
-        if (med) {
-          med.stock_quantity = Math.max(0, med.stock_quantity - item.quantity);
-          await med.save();
+        try {
+          const med = await Medicine.findById(item.medicine_id);
+          if (med) {
+            med.stock_quantity = Math.max(0, med.stock_quantity - item.quantity);
+            await med.save();
+          }
+        } catch (e) {
+          // In case item.medicine_id is not a valid ObjectId (e.g. SQLite ID or string)
+          await Medicine.updateOne(
+            { name: item.medicine_name },
+            { $inc: { stock_quantity: -item.quantity } }
+          );
         }
       }
     }
 
     const sale = await Sale.create({
       bill_number: `INV-${Date.now().toString().slice(-6)}`,
-      customer_name: customer_name || 'Walk-in Customer',
+      customer_id: customer_id || null,
+      customer_name: customer_name || 'Walking Customer',
+      doctor_id: doctor_id || null,
       doctor_name: doctor_name || '',
       cashier_name: cashier_name || 'Staff',
       subtotal: finalSubtotal,
@@ -600,8 +760,31 @@ app.post('/api/sales', async (req, res) => {
       paid_amount: finalPaid,
       change_amount: finalChange,
       payment_method: payment_method || 'Cash',
+      card_last4: card_last4 || '',
+      cheque_no: cheque_no || '',
+      bank_name: bank_name || '',
+      cheque_date: cheque_date || '',
       items: formattedItems
     });
+
+    // If Credit, update customer credit_balance
+    if (payment_method === 'Credit' && customer_id) {
+      try {
+        await Customer.findByIdAndUpdate(customer_id, {
+          $inc: { credit_balance: finalTotal, total_spent: finalTotal }
+        });
+      } catch (e) {
+        await Customer.updateOne({ name: customer_name }, {
+          $inc: { credit_balance: finalTotal, total_spent: finalTotal }
+        });
+      }
+    } else if (customer_id) {
+      try {
+        await Customer.findByIdAndUpdate(customer_id, {
+          $inc: { total_spent: finalTotal }
+        });
+      } catch (e) {}
+    }
 
     res.status(201).json({ id: sale._id, ...sale.toObject() });
   } catch (err) {
@@ -859,11 +1042,296 @@ app.post('/api/reloads', async (req, res) => {
   }
 });
 
-app.delete('/api/reloads/:id', async (req, res) => {
+// ==================== CUSTOMER CREDIT & PAYMENTS ====================
+app.get('/api/customers/:id/payments', async (req, res) => {
   try {
     await connectDB();
-    await ReloadOrder.findByIdAndDelete(req.params.id);
+    const payments = await CustomerCreditPayment.find({ customer_id: req.params.id }).sort({ createdAt: -1 });
+    res.json(payments.map(p => ({ id: p._id, ...p.toObject() })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/customer-payments', async (req, res) => {
+  try {
+    await connectDB();
+    const payments = await CustomerCreditPayment.find().sort({ createdAt: -1 });
+    res.json(payments.map(p => ({ id: p._id, ...p.toObject() })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/customers/:id/payments', async (req, res) => {
+  try {
+    await connectDB();
+    const { amount, payment_method, cheque_no, bank_name, notes, received_by } = req.body;
+    let customer = null;
+    try {
+      customer = await Customer.findById(req.params.id);
+    } catch (e) {}
+
+    const payment = await CustomerCreditPayment.create({
+      payment_number: `PAY-${Date.now().toString().slice(-6)}`,
+      customer_id: req.params.id,
+      customer_name: customer ? customer.name : (req.body.customer_name || 'Customer'),
+      amount: Number(amount) || 0,
+      payment_method: payment_method || 'Cash',
+      cheque_no: cheque_no || '',
+      bank_name: bank_name || '',
+      notes: notes || '',
+      received_by: received_by || 'Staff'
+    });
+
+    if (customer) {
+      customer.credit_balance = Math.max(0, (customer.credit_balance || 0) - (Number(amount) || 0));
+      await customer.save();
+    }
+
+    res.status(201).json({ id: payment._id, ...payment.toObject() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/customers/:id/pay-credit', async (req, res) => {
+  try {
+    await connectDB();
+    const { amount, payment_method, notes } = req.body;
+    let customer = null;
+    try {
+      customer = await Customer.findById(req.params.id);
+    } catch (e) {}
+
+    const payment = await CustomerCreditPayment.create({
+      payment_number: `PAY-${Date.now().toString().slice(-6)}`,
+      customer_id: req.params.id,
+      customer_name: customer ? customer.name : 'Customer',
+      amount: Number(amount) || 0,
+      payment_method: payment_method || 'Cash',
+      notes: notes || '',
+      received_by: 'Staff'
+    });
+
+    if (customer) {
+      customer.credit_balance = Math.max(0, (customer.credit_balance || 0) - (Number(amount) || 0));
+      await customer.save();
+    }
+
+    res.status(201).json({ id: payment._id, ...payment.toObject() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==================== ITEM RETURNS & REFUNDS ====================
+app.get('/api/returns', async (req, res) => {
+  try {
+    await connectDB();
+    const returns = await SaleReturn.find().sort({ createdAt: -1 });
+    res.json(returns.map(r => ({ id: r._id, ...r.toObject() })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/returns', async (req, res) => {
+  try {
+    await connectDB();
+    const { invoice_no, customer_name, medicine_id, medicine_name, batch_no, quantity, unit_price, refund_amount, reason, condition, refund_method, processed_by, notes } = req.body;
+
+    const ret = await SaleReturn.create({
+      return_number: `RET-${Date.now().toString().slice(-6)}`,
+      invoice_no: invoice_no || '',
+      customer_name: customer_name || 'Walking Customer',
+      medicine_id: medicine_id || null,
+      medicine_name: medicine_name || 'Item',
+      batch_no: batch_no || '',
+      quantity: Number(quantity) || 1,
+      unit_price: Number(unit_price) || 0,
+      refund_amount: Number(refund_amount) || 0,
+      reason: reason || 'Customer Request',
+      condition: condition || 'Restock to Inventory',
+      refund_method: refund_method || 'Cash',
+      processed_by: processed_by || 'Staff',
+      notes: notes || ''
+    });
+
+    // If restocking, increment medicine stock
+    if (condition !== 'Damaged / Discard' && medicine_id) {
+      try {
+        await Medicine.findByIdAndUpdate(medicine_id, {
+          $inc: { stock_quantity: Number(quantity) || 1 }
+        });
+      } catch (e) {
+        await Medicine.updateOne(
+          { name: medicine_name },
+          { $inc: { stock_quantity: Number(quantity) || 1 } }
+        );
+      }
+    }
+
+    res.status(201).json({ id: ret._id, ...ret.toObject() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/returns/:id', async (req, res) => {
+  try {
+    await connectDB();
+    await SaleReturn.findByIdAndDelete(req.params.id);
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==================== OPERATIONAL EXPENSES ====================
+app.get('/api/expenses', async (req, res) => {
+  try {
+    await connectDB();
+    const expenses = await Expense.find().sort({ createdAt: -1 });
+    res.json(expenses.map(e => ({ id: e._id, ...e.toObject() })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/expenses', async (req, res) => {
+  try {
+    await connectDB();
+    const { title, category, amount, expense_date, payment_method, cheque_no, paid_to, notes, recorded_by } = req.body;
+    const expense = await Expense.create({
+      expense_number: `EXP-${Date.now().toString().slice(-6)}`,
+      title: title || 'Expense',
+      category: category || 'General',
+      amount: Number(amount) || 0,
+      expense_date: expense_date || new Date().toISOString().split('T')[0],
+      payment_method: payment_method || 'Cash',
+      cheque_no: cheque_no || '',
+      paid_to: paid_to || '',
+      notes: notes || '',
+      recorded_by: recorded_by || 'Staff'
+    });
+    res.status(201).json({ id: expense._id, ...expense.toObject() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/expenses/:id', async (req, res) => {
+  try {
+    await connectDB();
+    const updated = await Expense.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updated) return res.status(404).json({ error: 'Expense not found' });
+    res.json({ id: updated._id, ...updated.toObject() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/expenses/:id', async (req, res) => {
+  try {
+    await connectDB();
+    await Expense.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==================== STOCK ADJUSTMENTS ====================
+app.get('/api/stock/adjustments', async (req, res) => {
+  try {
+    await connectDB();
+    const adjs = await StockAdjustment.find().sort({ createdAt: -1 });
+    res.json(adjs.map(a => ({ id: a._id, ...a.toObject() })));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/stock/adjust', async (req, res) => {
+  try {
+    await connectDB();
+    const { medicine_id, medicine_name, batch_no, previous_qty, adjusted_qty, difference, reason, notes, adjusted_by } = req.body;
+
+    const adj = await StockAdjustment.create({
+      adjustment_number: `ADJ-${Date.now().toString().slice(-6)}`,
+      medicine_id: medicine_id,
+      medicine_name: medicine_name || 'Medicine',
+      batch_no: batch_no || '',
+      previous_qty: Number(previous_qty) || 0,
+      adjusted_qty: Number(adjusted_qty) || 0,
+      difference: Number(difference) || 0,
+      reason: reason || 'Manual Stock Count',
+      adjusted_by: adjusted_by || 'Staff',
+      notes: notes || ''
+    });
+
+    if (medicine_id) {
+      try {
+        await Medicine.findByIdAndUpdate(medicine_id, {
+          $set: { stock_quantity: Number(adjusted_qty) }
+        });
+      } catch (e) {
+        await Medicine.updateOne(
+          { name: medicine_name },
+          { $set: { stock_quantity: Number(adjusted_qty) } }
+        );
+      }
+    }
+
+    res.status(201).json({ id: adj._id, ...adj.toObject() });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==================== COMPREHENSIVE REPORTS ====================
+app.get('/api/reports/comprehensive', async (req, res) => {
+  try {
+    await connectDB();
+    const { period = 'daily', date, month, year } = req.query;
+
+    const allSales = await Sale.find().sort({ createdAt: -1 });
+    const allExpenses = await Expense.find().sort({ createdAt: -1 });
+    const allPurchases = await DealerPurchase.find().sort({ createdAt: -1 });
+    const allReturns = await SaleReturn.find().sort({ createdAt: -1 });
+    const allMeds = await Medicine.find().sort({ name: 1 });
+
+    const totalSales = allSales.reduce((sum, s) => sum + (s.total_amount || 0), 0);
+    const totalExpenses = allExpenses.reduce((sum, e) => sum + (e.amount || 0), 0);
+    const totalPurchases = allPurchases.reduce((sum, p) => sum + (p.total_amount || 0), 0);
+    const totalReturns = allReturns.reduce((sum, r) => sum + (r.refund_amount || 0), 0);
+    const netRevenue = totalSales - totalReturns;
+    const grossProfit = totalSales * 0.25; // estimated 25% margin
+    const netProfit = grossProfit - totalExpenses;
+
+    const totalStockValue = allMeds.reduce((sum, m) => sum + ((m.cost_price || 0) * (m.stock_quantity || 0)), 0);
+    const totalRetailValue = allMeds.reduce((sum, m) => sum + ((m.selling_price || 0) * (m.stock_quantity || 0)), 0);
+
+    res.json({
+      summary: {
+        totalSales,
+        totalBills: allSales.length,
+        totalExpenses,
+        totalPurchases,
+        totalReturns,
+        netRevenue,
+        grossProfit: Math.max(0, grossProfit),
+        netProfit,
+        totalStockValue,
+        totalRetailValue,
+        totalItemsCount: allMeds.length
+      },
+      sales: allSales.slice(0, 100).map(s => ({ id: s._id, ...s.toObject() })),
+      expenses: allExpenses.slice(0, 100).map(e => ({ id: e._id, ...e.toObject() })),
+      purchases: allPurchases.slice(0, 100).map(p => ({ id: p._id, ...p.toObject() })),
+      returns: allReturns.slice(0, 100).map(r => ({ id: r._id, ...r.toObject() }))
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
