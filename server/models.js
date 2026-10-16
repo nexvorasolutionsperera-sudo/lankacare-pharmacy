@@ -68,7 +68,7 @@ const DoctorSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 const SaleItemSchema = new mongoose.Schema({
-  medicine_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Medicine' },
+  medicine_id: { type: mongoose.Schema.Types.Mixed },
   medicine_name: { type: String, required: true },
   batch_number: { type: String, default: '' },
   dosage: { type: String, default: '' },
@@ -81,11 +81,11 @@ const SaleItemSchema = new mongoose.Schema({
 
 const SaleSchema = new mongoose.Schema({
   bill_number: { type: String, required: true, unique: true },
-  customer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer' },
+  customer_id: { type: mongoose.Schema.Types.Mixed, default: null },
   customer_name: { type: String, default: 'Walking Customer' },
-  doctor_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
+  doctor_id: { type: mongoose.Schema.Types.Mixed, default: null },
   doctor_name: { type: String, default: '' },
-  user_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  user_id: { type: mongoose.Schema.Types.Mixed, default: null },
   cashier_name: { type: String, default: 'Admin' },
   subtotal: { type: Number, required: true },
   discount: { type: Number, default: 0 },
@@ -186,7 +186,7 @@ const MedicareCatalogSchema = new mongoose.Schema({
 // 1. Customer Credit Payments
 const CustomerCreditPaymentSchema = new mongoose.Schema({
   payment_number: { type: String, required: true, unique: true },
-  customer_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Customer', required: true },
+  customer_id: { type: mongoose.Schema.Types.Mixed, required: true },
   customer_name: { type: String, required: true },
   amount: { type: Number, required: true },
   payment_method: { type: String, default: 'Cash' }, // Cash, Card, Cheque
@@ -201,7 +201,7 @@ const SaleReturnSchema = new mongoose.Schema({
   return_number: { type: String, required: true, unique: true },
   invoice_no: { type: String, default: '' },
   customer_name: { type: String, default: 'Walk-in Customer' },
-  medicine_id: { type: mongoose.Schema.Types.ObjectId, ref: 'Medicine' },
+  medicine_id: { type: mongoose.Schema.Types.Mixed },
   medicine_name: { type: String, required: true },
   batch_no: { type: String, default: '' },
   quantity: { type: Number, required: true },

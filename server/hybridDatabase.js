@@ -83,13 +83,23 @@ function syncSaleToSQLite(saleData) {
     const existing = sqliteDb.prepare('SELECT id FROM sales WHERE invoice_no = ?').get(billNo);
     if (existing) return;
 
+    let sqliteCustId = null;
+    if (saleData.customer_id) {
+      if (!isNaN(Number(saleData.customer_id))) {
+        sqliteCustId = Number(saleData.customer_id);
+      } else {
+        const c = sqliteDb.prepare('SELECT id FROM customers WHERE name = ?').get(saleData.customer_name);
+        if (c) sqliteCustId = c.id;
+      }
+    }
+
     const stmtSale = sqliteDb.prepare(`
       INSERT INTO sales (invoice_no, customer_id, customer_name, subtotal, discount_amount, total_amount, paid_amount, change_amount, payment_method, cheque_no, bank_name, cheque_date)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     const saleInfo = stmtSale.run(
       billNo,
-      saleData.customer_id || null,
+      sqliteCustId,
       saleData.customer_name || 'Walk-in Customer',
       Number(saleData.subtotal || 0),
       Number(saleData.discount || 0),
@@ -104,9 +114,13 @@ function syncSaleToSQLite(saleData) {
     const saleId = saleInfo.lastInsertRowid;
 
     // If Credit payment, update customer's outstanding balance
-    if (saleData.payment_method === 'Credit' && saleData.customer_id) {
+    if (saleData.payment_method === 'Credit') {
       const creditDue = Math.max(0, Number(saleData.total_amount || 0) - Number(saleData.paid_amount || 0));
-      sqliteDb.prepare('UPDATE customers SET credit_balance = COALESCE(credit_balance, 0) + ? WHERE id = ?').run(creditDue, saleData.customer_id);
+      if (sqliteCustId) {
+        sqliteDb.prepare('UPDATE customers SET credit_balance = COALESCE(credit_balance, 0) + ? WHERE id = ?').run(creditDue, sqliteCustId);
+      } else if (saleData.customer_name && saleData.customer_name !== 'Walk-in Customer') {
+        sqliteDb.prepare('UPDATE customers SET credit_balance = COALESCE(credit_balance, 0) + ? WHERE name = ?').run(creditDue, saleData.customer_name);
+      }
     }
 
     const stmtItem = sqliteDb.prepare(`
@@ -740,7 +754,24 @@ export async function getAllSales() {
 }
 
 export async function createSale(data) {
-  const { customer_name, doctor_name, cashier_name, subtotal, discount, total_amount, paid_amount, change_amount, payment_method, items } = data;
+  const { 
+    customer_id,
+    doctor_id,
+    customer_name, 
+    doctor_name, 
+    cashier_name, 
+    subtotal, 
+    discount, 
+    total_amount, 
+    paid_amount, 
+    change_amount, 
+    payment_method, 
+    card_last4,
+    cheque_no,
+    bank_name,
+    cheque_date,
+    items 
+  } = data;
   const safeItems = Array.isArray(items) ? items : [];
   let calculatedSubtotal = 0;
 
@@ -764,20 +795,24 @@ export async function createSale(data) {
   const finalTotal = (!isNaN(Number(total_amount)) && Number(total_amount) > 0) ? Number(total_amount) : Math.max(0, finalSubtotal - finalDiscount);
   const finalPaid = (!isNaN(Number(paid_amount)) && Number(paid_amount) > 0) ? Number(paid_amount) : finalTotal;
   const finalChange = (!isNaN(Number(change_amount))) ? Number(change_amount) : (finalPaid > finalTotal ? Math.max(0, finalPaid - finalTotal) : 0);
-  const bill_number = `INV-${Date.now().toString().slice(-6)}`;
+  const bill_number = data.invoice_no || data.bill_number || `INV-${Date.now().toString().slice(-6)}`;
 
   const salePayload = {
     bill_number,
+    invoice_no: bill_number,
     customer_id: customer_id || null,
+    doctor_id: doctor_id || null,
     customer_name: customer_name || 'Walk-in Customer',
     doctor_name: doctor_name || '',
     cashier_name: cashier_name || 'Staff',
     subtotal: finalSubtotal,
     discount: finalDiscount,
+    discount_amount: finalDiscount,
     total_amount: finalTotal,
     paid_amount: finalPaid,
     change_amount: finalChange,
     payment_method: payment_method || 'Cash',
+    card_last4: card_last4 || null,
     cheque_no: cheque_no || '',
     bank_name: bank_name || '',
     cheque_date: cheque_date || '',
@@ -790,24 +825,34 @@ export async function createSale(data) {
   // 2. If Online, save into MongoDB Atlas
   if (currentMode === 'online') {
     for (const item of formattedItems) {
-      if (item.medicine_id) {
-        const med = await Medicine.findById(item.medicine_id);
+      try {
+        let med = null;
+        if (item.medicine_id && mongoose.Types.ObjectId.isValid(item.medicine_id)) {
+          med = await Medicine.findById(item.medicine_id);
+        }
+        if (!med && item.medicine_name) {
+          med = await Medicine.findOne({ name: item.medicine_name });
+        }
         if (med) {
           med.stock_quantity = Math.max(0, med.stock_quantity - item.quantity);
           await med.save();
         }
-      }
+      } catch (e) {}
     }
 
-    if (payment_method === 'Credit' && customer_id) {
+    if (payment_method === 'Credit') {
       const creditDue = Math.max(0, finalTotal - finalPaid);
       try {
-        await Customer.findByIdAndUpdate(customer_id, { $inc: { credit_balance: creditDue } });
+        if (customer_id && mongoose.Types.ObjectId.isValid(customer_id)) {
+          await Customer.findByIdAndUpdate(customer_id, { $inc: { credit_balance: creditDue } });
+        } else if (customer_name && customer_name !== 'Walk-in Customer') {
+          await Customer.findOneAndUpdate({ name: customer_name }, { $inc: { credit_balance: creditDue } });
+        }
       } catch (e) {}
     }
 
     const sale = await Sale.create(salePayload);
-    return { id: sale._id, ...sale.toObject() };
+    return { id: sale._id, ...sale.toObject(), ...salePayload };
   } else {
     // Offline mode return
     const row = sqliteDb.prepare('SELECT id FROM sales WHERE invoice_no = ?').get(bill_number);
